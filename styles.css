@@ -1,0 +1,112 @@
+/* URL panel, anchored top-left */
+#cab-url-panel {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  width: 600px;                 /* wider default */
+  height: 400px;                /* taller default */
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  z-index: 999999;
+  color: #111827;
+  resize: both;                 /* allow resize by dragging */
+  overflow: auto;               /* scrollbars if needed */
+}
+
+#cab-url-panel * {
+  color: #111827;
+}
+
+#cab-url-panel.cab-url-hidden { display: none; }
+
+.cab-url-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.cab-url-header strong { font-size: 14px; }
+#cab-url-count {
+  font-size: 12px;
+  color: #374151;
+  background: #f3f4f6;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.cab-url-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+}
+.cab-url-actions button {
+  border: 1px solid #d1d5db;
+  background: white;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.cab-url-actions button:hover {
+  background: #f9fafb;
+}
+
+#cab-url-text {
+  width: 100%;
+  flex: 1 1 auto;
+  resize: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  background: #ffffff;
+  color: #111827;
+}
+
+#cab-url-text::placeholder {
+  color: #6b7280;
+}
+
+.cab-url-footer {
+  font-size: 11px;
+  color: #374151;
+  display: flex;
+  justify-content: space-between;
+}
+.cab-url-footer kbd {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: #111827;
+}
+
+/* Toast */
+.cab-url-toast {
+  position: fixed;
+  top: 430px;        /* appears just under the panel */
+  left: 20px;
+  padding: 8px 12px;
+  background: #111827;
+  color: #fff;
+  border-radius: 999px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all .25s ease;
+  z-index: 1000000;
+  pointer-events: none;
+  font-size: 12px;
+}
+.cab-url-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}

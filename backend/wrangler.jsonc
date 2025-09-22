@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "backend",                
+  "main": "src/index.js",
+  "compatibility_date": "2025-09-21",
+
+  "observability": {
+    "enabled": true
+  },
+
+  "d1_databases": [
+    {
+      "binding": "DB",  // referenced in code as env.DB
+      "database_name": "carsandbids",
+      "database_id": "9f5efa6e-1a6b-4dc1-85d5-40e9739733f4",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

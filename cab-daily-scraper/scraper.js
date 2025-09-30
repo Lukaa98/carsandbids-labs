@@ -1,36 +1,71 @@
-// scraper.js
 import puppeteer from "puppeteer";
 import axios from "axios";
 import { collectListingEntries } from "./url-collector.js";
 import { enrichOne } from "./detail-extractor.js";
 import { sleep } from "./utils.js";
 
+async function autoScroll(page, maxScrolls = 15) {
+  console.log("🔽 Starting auto-scroll...");
+  for (let i = 0; i < maxScrolls; i++) {
+    await page.evaluate(() => {
+      window.scrollBy(0, window.innerHeight);
+    });
+    await sleep(1500);
+    console.log(`  ➡️ Scroll ${i + 1}/${maxScrolls}`);
+  }
+  console.log("✅ Finished auto-scroll");
+}
+
 async function main() {
   console.log("[C&B Scraper] Starting automated job ✅");
 
-  // Launch Puppeteer with no-sandbox flags (needed in GitHub Actions)
   const browser = await puppeteer.launch({
     headless: "new",
-    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    args: [
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-blink-features=AutomationControlled",
+    ],
+    defaultViewport: { width: 1366, height: 768 },
   });
-  const page = await browser.newPage();
 
-  // Step 1: Go to past auctions page
+  const page = await browser.newPage();
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119 Safari/537.36"
+  );
+
+  // Step 1: Navigate
   console.log("Navigating to past auctions page…");
   await page.goto("https://carsandbids.com/past-auctions/", {
-    waitUntil: "networkidle2",
+    waitUntil: "domcontentloaded",
     timeout: 60000,
   });
 
-  // Step 2: Collect listing entries
-  const entries = await collectListingEntries(page);
-  console.log(`Found ${entries.length} auction entries`);
+  // Debug output
+  await page.screenshot({ path: "debug.png", fullPage: true });
+  const html = await page.content();
+  console.log("----- PAGE HTML SNIPPET -----");
+  console.log(html.slice(0, 1000));
 
-  // Counters for summary
+  // Step 2: Wait for auction cards
+  try {
+    await page.waitForSelector("a[href*='/auctions/']", { timeout: 20000 });
+    console.log("✅ Auction anchors detected");
+  } catch {
+    console.warn("⚠️ Could not find auction anchors after load!");
+  }
+
+  // Step 3: Scroll
+  await autoScroll(page, 10);
+
+  // Step 4: Collect
+  const entries = await collectListingEntries(page);
+  console.log(`📊 Found ${entries.length} auction entries`);
+
   let successCount = 0;
   let failCount = 0;
 
-  // Step 3: Enrich details for each URL
+  // Step 5: Enrich + Save
   for (const [i, entry] of entries.entries()) {
     console.log(`Processing ${i + 1}/${entries.length}: ${entry.url}`);
 
@@ -46,16 +81,15 @@ async function main() {
       failCount++;
     }
 
-    await sleep(200); // throttle requests
+    await sleep(300);
   }
 
   await browser.close();
 
-  // Step 4: Summary
   console.log("----- Scrape Summary -----");
-  console.log(`Total entries:   ${entries.length}`);
-  console.log(`Successfully saved: ${successCount}`);
-  console.log(`Failed to save:     ${failCount}`);
+  console.log(`Total entries:       ${entries.length}`);
+  console.log(`Successfully saved:  ${successCount}`);
+  console.log(`Failed to save:      ${failCount}`);
   console.log("[C&B Scraper] Done ✅");
 }
 

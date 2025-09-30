@@ -1,0 +1,13 @@
+{
+  "name": "cab-daily-scraper",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node scraper.js"
+  },
+  "dependencies": {
+    "axios": "^1.12.2",
+    "chalk": "^5.6.2",
+    "puppeteer": "^24.22.3"
+  }
+}

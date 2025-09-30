@@ -1,27 +1,26 @@
 export async function collectListingEntries(page) {
   return await page.evaluate(() => {
-    const anchors = Array.from(document.querySelectorAll('a[href*="/auctions/"]'));
-    const seen = new Set();
+    const cards = Array.from(document.querySelectorAll(".auction-card"));
     const entries = [];
+    const seen = new Set();
 
-    for (const a of anchors) {
+    for (const card of cards) {
+      const a = card.querySelector("a[href]");
+      if (!a) continue;
+
       const href = a.href;
       if (!/^https?:\/\/(?:www\.)?carsandbids\.com\/auctions\//i.test(href)) continue;
       if (seen.has(href)) continue;
       seen.add(href);
 
-      const container =
-        a.closest('article, li, .listing, .auction-card, .grid-item, .result, .results, .card') ||
-        a.closest('div');
-
       let ended = "";
-      if (container && container.textContent) {
-        const m = container.textContent.match(/Ended\s+[^\n]+/i);
-        if (m) ended = m[0].trim();
-      }
+      const txt = card.textContent || "";
+      const m = txt.match(/Ended\s+[^\n]+/i);
+      if (m) ended = m[0].trim();
 
       entries.push({ url: href, ended });
     }
+
     return entries;
   });
 }

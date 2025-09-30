@@ -8,6 +8,9 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cab-daily-scraper   # all steps run inside this folder
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

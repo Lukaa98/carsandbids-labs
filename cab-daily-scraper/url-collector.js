@@ -1,22 +1,26 @@
 export async function collectListingEntries(page) {
   return await page.evaluate(() => {
-    const cards = Array.from(document.querySelectorAll(".auction-card"));
     const entries = [];
     const seen = new Set();
 
-    for (const card of cards) {
-      const a = card.querySelector("a[href]");
+    const items = document.querySelectorAll(".auctions-list.past-auctions .auction-item");
+
+    for (const item of items) {
+      const a = item.querySelector(".auction-title a[href*='/auctions/']");
       if (!a) continue;
 
-      const href = a.href;
-      if (!/^https?:\/\/(?:www\.)?carsandbids\.com\/auctions\//i.test(href)) continue;
+      const href = a.href.startsWith("http")
+        ? a.href
+        : `https://carsandbids.com${a.getAttribute("href")}`;
+
       if (seen.has(href)) continue;
       seen.add(href);
 
-      let ended = "";
-      const txt = card.textContent || "";
-      const m = txt.match(/Ended\s+[^\n]+/i);
-      if (m) ended = m[0].trim();
+      // Grab any “Ended” or “Sold for” text
+      const txt = item.innerText || "";
+      const soldMatch = txt.match(/Sold\s+for\s+\$[\d,]+/i);
+      const endedMatch = txt.match(/Ended\s+\S+/i);
+      const ended = soldMatch ? soldMatch[0] : endedMatch ? endedMatch[0] : "";
 
       entries.push({ url: href, ended });
     }

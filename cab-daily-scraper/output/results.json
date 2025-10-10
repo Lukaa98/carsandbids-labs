@@ -1,0 +1,48 @@
+[
+  {
+    "url": "https://carsandbids.com/auctions/rNJD7Wwk/2002-bmw-z8",
+    "time": "2025-10-05T18:50:41.320Z",
+    "result": {
+      "url": "https://carsandbids.com/auctions/rNJD7Wwk/2002-bmw-z8",
+      "enriched": true,
+      "title": "2002 BMW Z8",
+      "fieldsFound": 13,
+      "make": "BMW",
+      "model": "Z8Save",
+      "mileage": "9,700",
+      "vin": "WBAEJ13402AH61292",
+      "titleStatus": "Clean (TN)",
+      "location": "Brentwood, TN 37027",
+      "seller": "Private Party",
+      "engine": "4.9L V8",
+      "drivetrain": "Rear-wheel drive",
+      "transmission": "Manual (6-Speed)",
+      "bodyStyle": "Convertible",
+      "exteriorColor": "Titanium Silver Metallic",
+      "interiorColor": "Black"
+    }
+  },
+  {
+    "url": "https://carsandbids.com/auctions/rkng5Pwk/2011-audi-s4-premium-plus",
+    "time": "2025-10-05T18:50:46.869Z",
+    "result": {
+      "url": "https://carsandbids.com/auctions/rkng5Pwk/2011-audi-s4-premium-plus",
+      "enriched": true,
+      "title": "2011 Audi S4 Premium Plus",
+      "fieldsFound": 13,
+      "make": "Audi",
+      "model": "B8 S4Save",
+      "mileage": "87,800",
+      "vin": "WAUBGAFL5BA054853",
+      "titleStatus": "Clean (SC)",
+      "location": "Charleston, SC 29412",
+      "seller": "Private Party",
+      "engine": "3.0L Supercharged V6",
+      "drivetrain": "4WD/AWD",
+      "transmission": "Automatic (7-Speed)",
+      "bodyStyle": "Sedan",
+      "exteriorColor": "Quartz Gray Metallic",
+      "interiorColor": "Black"
+    }
+  }
+]

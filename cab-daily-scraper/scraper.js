@@ -1,99 +1,154 @@
-import puppeteer from "puppeteer";
-import axios from "axios";
+// scraper.js
+import puppeteer from "puppeteer-extra";
+import StealthPlugin from "puppeteer-extra-plugin-stealth";
+import fs from "fs/promises";
+import path from "path";
 import { collectListingEntries } from "./url-collector.js";
 import { enrichOne } from "./detail-extractor.js";
 import { sleep } from "./utils.js";
 
-async function autoScroll(page, maxScrolls = 15) {
-  console.log("🔽 Starting auto-scroll...");
-  for (let i = 0; i < maxScrolls; i++) {
-    await page.evaluate(() => {
-      window.scrollBy(0, window.innerHeight);
-    });
-    await sleep(1500);
-    console.log(`  ➡️ Scroll ${i + 1}/${maxScrolls}`);
+puppeteer.use(StealthPlugin());
+
+const OUTPUT_DIR = path.resolve("./output");
+const OUTPUT_FILE = path.join(OUTPUT_DIR, "results.json");
+const MAX_URLS = 50;
+const PER_PAGE_DELAY_MS = 1500; // between pages
+const BETWEEN_ENRICH_MS = 2000 + Math.floor(Math.random() * 2000); // jitter
+
+async function ensureOutput() {
+  try {
+    await fs.mkdir(OUTPUT_DIR, { recursive: true });
+  } catch (e) {
+    /* ignore */
   }
-  console.log("✅ Finished auto-scroll");
+  // initialize file if not exists
+  try {
+    await fs.access(OUTPUT_FILE);
+  } catch {
+    await fs.writeFile(OUTPUT_FILE, JSON.stringify([], null, 2));
+  }
+}
+
+async function readResults() {
+  try {
+    const txt = await fs.readFile(OUTPUT_FILE, "utf8");
+    return JSON.parse(txt || "[]");
+  } catch {
+    return [];
+  }
+}
+
+async function appendResult(r) {
+  const arr = await readResults();
+  arr.push(r);
+  await fs.writeFile(OUTPUT_FILE, JSON.stringify(arr, null, 2));
 }
 
 async function main() {
-  console.log("[C&B Scraper] Starting automated job ✅");
+  console.log("[C&B Scraper] Starting local run ✅");
+  await ensureOutput();
 
   const browser = await puppeteer.launch({
-    headless: "new",
+    headless: false, // visible so you can solve CF challenge
+    executablePath: "C:/Program Files/Google/Chrome/Application/chrome.exe", // keep this if on Windows; otherwise remove to use bundled
+    userDataDir: "./cb-profile",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-blink-features=AutomationControlled",
+      "--disable-infobars",
+      "--window-size=1366,768",
+      "--start-maximized",
+      "--password-store=basic",
+      "--use-mock-keychain",
     ],
-    defaultViewport: { width: 1366, height: 768 },
+    defaultViewport: null,
   });
 
   const page = await browser.newPage();
-  await page.setUserAgent(
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119 Safari/537.36"
-  );
 
-  // Step 1: Navigate
-  console.log("Navigating to past auctions page…");
+  // real-ish UA and headers
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+  );
+  await page.setExtraHTTPHeaders({ "Accept-Language": "en-US,en;q=0.9" });
+
+  // Visit the listing page to collect URLs
+  console.log("🌐 Loading listing page...");
   await page.goto("https://carsandbids.com/past-auctions/", {
     waitUntil: "domcontentloaded",
-    timeout: 60000,
+    timeout: 90000,
   });
 
-  // Debug output
-  await page.screenshot({ path: "debug.png", fullPage: true });
-  const html = await page.content();
-  console.log("----- PAGE HTML SNIPPET -----");
-  console.log(html.slice(0, 1000));
-
-  // Step 2: Wait for auction cards
-  try {
-    await page.waitForSelector("a[href*='/auctions/']", { timeout: 20000 });
-    console.log("✅ Auction anchors detected");
-  } catch {
-    console.warn("⚠️ Could not find auction anchors after load!");
+  // Detect Cloudflare / interstitial
+  let title = await page.title();
+  if (title.includes("Just a moment") || title.includes("Verify")) {
+    console.log("🚨 Cloudflare challenge detected on listing page.");
+    console.log("➡️ Please complete the challenge in the opened Chrome window, then press Enter here to continue...");
+    // keep the browser window open and wait for Enter
+    await new Promise((resolve) => process.stdin.once("data", resolve));
+    // re-check
+    await page.waitForTimeout(2000);
+    title = await page.title();
+    console.log("🔁 After solve, page title:", title);
   }
 
-  // Step 3: Scroll
-  await autoScroll(page, 10);
+  // small wait to let JS hydrate
+  await sleep(2000);
 
-  // Step 4: Collect
-  const entries = await collectListingEntries(page);
-  console.log(`📊 Found ${entries.length} auction entries`);
+  // Collect listing entries
+  console.log("🔎 Collecting listing entries from the page...");
+  let entries;
+  try {
+    entries = await collectListingEntries(page);
+  } catch (e) {
+    console.error("❌ collectListingEntries failed:", e.message);
+    await browser.close();
+    return;
+  }
 
-  let successCount = 0;
-  let failCount = 0;
+  if (!Array.isArray(entries) || entries.length === 0) {
+    console.warn("⚠️ No entries found on listing page. Check selector or if Cloudflare still blocking.");
+    // print page snippet for debug
+    const snippet = await page.evaluate(() => document.body.innerText.slice(0, 600));
+    console.log("---- Page text snippet ----\n", snippet, "\n---- end snippet ----");
+    await browser.close();
+    return;
+  }
 
-  // Step 5: Enrich + Save
-  for (const [i, entry] of entries.entries()) {
-    console.log(`Processing ${i + 1}/${entries.length}: ${entry.url}`);
+  console.log(`✅ Found ${entries.length} entries. Limiting to ${MAX_URLS}.`);
+  const toProcess = entries.slice(0, MAX_URLS).map((e) => e.url);
 
-    const result = await enrichOne(browser, entry.url);
-    if (entry.ended) result.ended = entry.ended;
+  console.log("➡️ URLs to process:");
+  toProcess.forEach((u, i) => console.log(`${i + 1}. ${u}`));
 
+  // Process each URL using enrichOne(browser, url)
+  for (let i = 0; i < toProcess.length; i++) {
+    const url = toProcess[i];
+    console.log(`\n--- (${i + 1}/${toProcess.length}) Processing: ${url}`);
     try {
-      await axios.post("https://backend.carsandbids-labs.workers.dev/auctions", result);
-      console.log(`✅ Saved: ${result.url}`);
-      successCount++;
-    } catch (err) {
-      console.error(`❌ Error saving ${result.url}:`, err.message);
-      failCount++;
+      const res = await enrichOne(browser, url);
+      await appendResult({ url, time: new Date().toISOString(), result: res });
+      console.log(`✅ Saved result for ${url}`);
+    } catch (e) {
+      console.error(`❌ Error enriching ${url}:`, e.message || e);
+      await appendResult({ url, time: new Date().toISOString(), error: String(e) });
     }
 
-    await sleep(300);
+    // polite delay between jobs
+    const wait = BETWEEN_ENRICH_MS + Math.floor(Math.random() * PER_PAGE_DELAY_MS);
+    console.log(`⏳ Waiting ${Math.round(wait / 1000)}s before next URL...`);
+    await sleep(wait);
   }
 
+  console.log("\n🎉 All done. Closing browser.");
   await browser.close();
 
-  console.log("----- Scrape Summary -----");
-  console.log(`Total entries:       ${entries.length}`);
-  console.log(`Successfully saved:  ${successCount}`);
-  console.log(`Failed to save:      ${failCount}`);
-  console.log("[C&B Scraper] Done ✅");
+  const results = await readResults();
+  console.log(`📦 Results saved to ${OUTPUT_FILE} (${results.length} items)`);
 }
 
 main().catch((err) => {
-  console.error("Fatal error in scraper:", err);
+  console.error("Fatal error:", err);
   process.exit(1);
 });

@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: cab-daily-scraper   # all steps run inside this folder
+        working-directory: cab-daily-scraper
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -21,7 +21,13 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install puppeteer axios
+        run: npm ci
 
       - name: Run scraper
         run: node scraper.js
+
+      - name: Upload results (keep daily files)
+        uses: actions/upload-artifact@v4
+        with:
+          name: carsandbids-${{ github.run_id }}
+          path: cab-daily-scraper/output/

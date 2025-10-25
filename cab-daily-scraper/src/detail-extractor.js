@@ -60,21 +60,36 @@ export async function enrichOne(browser, url) {
         });
       }
 
-      // STATUS
+      // STATUS (handles Sold vs Bid to)
       const text = document.body.innerText;
-      const soldMatch = text.match(/Sold\s+for\s+\$([\d,]+)/i);
-      const bidMatch = text.match(/Bids?\s*([\d,]+)/i);
-      const commentMatch = text.match(/Comments?\s*([\d,]+)/i);
-      const viewMatch = text.match(/Views?\s*([\d,]+)/i);
-      const watchMatch = text.match(/Watching\s*([\d,]+)/i);
+      const soldMatch = text.match(/Sold\s+(?:for\s+)?\$([\d,]+)/i);
+      const bidToMatch = text.match(/Bid\s*to\s*\$([\d,]+)/i);
+      const bidCountMatch = text.match(/\bBids?\b\s*(\d+)/i);
+      const commentMatch = text.match(/\bComments?\b\s*(\d+)/i);
+      const viewMatch = text.match(/\bViews?\b\s*([\d,]+)/i);
+      const watchMatch = text.match(/\bWatching\b\s*([\d,]+)/i);
       const endMatch = text.match(/Ended\s+(.*?)\n/i);
 
+      let saleType = "Bid to";
+      let finalSalePrice = null;
+      let finalBidPrice = null;
+
+      if (soldMatch) {
+        saleType = "Sold";
+        finalSalePrice = Number(soldMatch[1].replace(/,/g, ""));
+        finalBidPrice = finalSalePrice;
+      } else if (bidToMatch) {
+        saleType = "Bid to";
+        finalBidPrice = Number(bidToMatch[1].replace(/,/g, ""));
+      }
+
       const status = {
-        saleType: soldMatch ? "Sold" : "Bid to",
-        finalSalePrice: soldMatch ? Number(soldMatch[1].replace(/,/g, "")) : null,
+        saleType,
+        finalSalePrice,
+        finalBidPrice,
         currency: "USD",
         endDate: endMatch ? norm(endMatch[1]) : null,
-        numBids: bidMatch ? Number(bidMatch[1]) : null,
+        numBids: bidCountMatch ? Number(bidCountMatch[1]) : null,
         numComments: commentMatch ? Number(commentMatch[1]) : null,
         numViews: viewMatch ? Number(viewMatch[1].replace(/,/g, "")) : null,
         numWatchers: watchMatch ? Number(watchMatch[1].replace(/,/g, "")) : null,
@@ -152,7 +167,6 @@ export async function enrichOne(browser, url) {
           mainImageUrl = src;
         }
       }
-
 
       const imageCount = imageUrls.length;
 

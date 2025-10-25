@@ -12,17 +12,18 @@ export async function handleSave(request, env) {
     const seller = body.seller || {};
     const media = body.media || {};
 
+    // Prepare insert
     const stmt = env.DB.prepare(`
       INSERT INTO auctionResults (
         auctionId, url, title,
         year, make, model, trim, bodyStyle, segment, exteriorColor, interiorColor,
         engine, drivetrain, transmission, mileage, mileageUnit, vin, titleStatus,
         sellerType, location,
-        saleType, finalSalePrice, numBids, numComments, numViews, numWatchers, endDate,
+        saleType, finalSalePrice, finalBidPrice, numBids, numComments, numViews, numWatchers, endDate,
         mainImageUrl, imageCount,
         rawVehicle, rawStatus, rawSeller, rawMedia
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(auctionId) DO NOTHING
     `).bind(
       body.auctionId,
@@ -50,6 +51,7 @@ export async function handleSave(request, env) {
 
       status.saleType,
       status.finalSalePrice,
+      status.finalBidPrice,
       status.numBids,
       status.numComments,
       status.numViews,

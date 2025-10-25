@@ -4,7 +4,7 @@ import { enrichOne } from "./detail-extractor.js";
 
 puppeteer.use(StealthPlugin());
 
-const TEST_URL = "https://carsandbids.com/auctions/KPmqe4WZ/2015-range-rover-hse";
+const TEST_URL = "https://carsandbids.com/auctions/3znMY17J/2005-honda-s2000";
 const BACKEND_URL = "https://backend.carsandbids-labs.workers.dev/save";
 
 (async () => {

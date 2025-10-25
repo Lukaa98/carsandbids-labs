@@ -19,7 +19,7 @@ const BETWEEN_ENRICH_MS = 3000 + Math.floor(Math.random() * 2000);
 const BACKEND_URL = "https://backend.carsandbids-labs.workers.dev/save";
 
 async function ensureOutput() {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true }).catch(() => {});
+  await fs.mkdir(OUTPUT_DIR, { recursive: true }).catch(() => { });
   try {
     await fs.access(OUTPUT_JSON);
   } catch {
@@ -36,9 +36,24 @@ async function readResults() {
   }
 }
 
+// ✅ Replaces existing auctionId entry if found
 async function appendResult(result) {
   const arr = await readResults();
-  arr.push(result);
+  const newId = result.result?.auctionId;
+
+  if (!newId) {
+    console.warn("⚠️ Missing auctionId for result:", result.url);
+    arr.push(result);
+  } else {
+    const existingIndex = arr.findIndex((r) => r.result?.auctionId === newId);
+    if (existingIndex >= 0) {
+      console.log(`♻️ Updating existing auction: ${newId}`);
+      arr[existingIndex] = result; // replace old
+    } else {
+      arr.push(result);
+    }
+  }
+
   await fs.writeFile(OUTPUT_JSON, JSON.stringify(arr, null, 2));
 }
 
@@ -74,10 +89,10 @@ async function handleCloudflare(page) {
   return true;
 }
 
+// ✅ Upload results in batches (with clearer logs)
 async function uploadResults(results) {
   console.log(`📤 Uploading ${results.length} scraped results to backend...`);
 
-  // Batch uploads (10 per round)
   const batchSize = 10;
   for (let i = 0; i < results.length; i += batchSize) {
     const batch = results.slice(i, i + batchSize);
@@ -92,18 +107,17 @@ async function uploadResults(results) {
           });
 
           const out = await res.json();
-          console.log(
-            `✅ [${item.result.auctionId || "?"}] ${item.result.url} → ${
-              out.ok ? "Saved" : out.error
-            }`
-          );
+          if (out.ok) {
+            console.log(`✅ [${item.result.auctionId}] ${item.result.url} → Saved/Updated`);
+          } else {
+            console.warn(`⚠️ [${item.result.auctionId}] ${out.error || "Unknown backend error"}`);
+          }
         } catch (err) {
           console.error("❌ Upload failed:", item.result?.url || "?", err.message);
         }
       })
     );
 
-    // Small pause between batches
     if (i + batchSize < results.length) {
       console.log("⏳ Waiting before next batch...");
       await sleep(1000);

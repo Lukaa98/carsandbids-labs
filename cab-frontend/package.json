@@ -2,7 +2,7 @@
   "name": "cab-frontend",
   "version": "0.1.0",
   "private": false,
-  "homepage": "https://lukaa98.github.io/cab-frontend",
+  "homepage": "https://lukaa98.github.io/carsandbids-labs",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",

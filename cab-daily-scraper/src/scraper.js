@@ -10,15 +10,16 @@ import { sleep } from "./utils.js";
 puppeteer.use(StealthPlugin());
 
 const OUTPUT_DIR = path.resolve("./output");
-const TODAY = new Date().toISOString().slice(0, 10); // e.g. "2025-10-18"
+const TODAY = new Date().toISOString().slice(0, 10); // e.g. "2025-10-25"
 const OUTPUT_JSON = path.join(OUTPUT_DIR, `${TODAY}.json`);
 const OUTPUT_CSV = path.join(OUTPUT_DIR, `${TODAY}.csv`);
 const MAX_URLS = 50;
 const PAGE_DELAY_MS = 2000;
 const BETWEEN_ENRICH_MS = 3000 + Math.floor(Math.random() * 2000);
+const BACKEND_URL = "https://backend.carsandbids-labs.workers.dev/save";
 
 async function ensureOutput() {
-  await fs.mkdir(OUTPUT_DIR, { recursive: true }).catch(() => { });
+  await fs.mkdir(OUTPUT_DIR, { recursive: true }).catch(() => {});
   try {
     await fs.access(OUTPUT_JSON);
   } catch {
@@ -71,6 +72,45 @@ async function handleCloudflare(page) {
     }
   }
   return true;
+}
+
+async function uploadResults(results) {
+  console.log(`📤 Uploading ${results.length} scraped results to backend...`);
+
+  // Batch uploads (10 per round)
+  const batchSize = 10;
+  for (let i = 0; i < results.length; i += batchSize) {
+    const batch = results.slice(i, i + batchSize);
+
+    await Promise.all(
+      batch.map(async (item) => {
+        try {
+          const res = await fetch(BACKEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(item.result),
+          });
+
+          const out = await res.json();
+          console.log(
+            `✅ [${item.result.auctionId || "?"}] ${item.result.url} → ${
+              out.ok ? "Saved" : out.error
+            }`
+          );
+        } catch (err) {
+          console.error("❌ Upload failed:", item.result?.url || "?", err.message);
+        }
+      })
+    );
+
+    // Small pause between batches
+    if (i + batchSize < results.length) {
+      console.log("⏳ Waiting before next batch...");
+      await sleep(1000);
+    }
+  }
+
+  console.log("🎯 Upload completed.");
 }
 
 async function main() {
@@ -135,6 +175,7 @@ async function main() {
       console.error(`❌ Error on ${url}:`, err.message || err);
       await appendResult({ url, time: new Date().toISOString(), error: String(err) });
     }
+
     const wait = BETWEEN_ENRICH_MS + Math.random() * PAGE_DELAY_MS;
     console.log(`⏳ Waiting ${Math.round(wait / 1000)}s...`);
     await sleep(wait);
@@ -143,6 +184,7 @@ async function main() {
   if (results.length) {
     console.log("🧾 Exporting CSV...");
     await exportCsv(await readResults());
+    await uploadResults(results);
   }
 
   console.log(`🎉 Done! Output saved under /output/${TODAY}.json & .csv`);

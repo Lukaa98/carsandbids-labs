@@ -4,7 +4,8 @@ import { enrichOne } from "./detail-extractor.js";
 
 puppeteer.use(StealthPlugin());
 
-const TEST_URL = "https://carsandbids.com/auctions/KPmqe4WZ/2015-range-rover-hse"; // example
+const TEST_URL = "https://carsandbids.com/auctions/KPmqe4WZ/2015-range-rover-hse";
+const BACKEND_URL = "https://backend.carsandbids-labs.workers.dev/save";
 
 (async () => {
   const browser = await puppeteer.launch({
@@ -20,4 +21,18 @@ const TEST_URL = "https://carsandbids.com/auctions/KPmqe4WZ/2015-range-rover-hse
   console.log("===========================\n");
 
   await browser.close();
+
+  // --- Manually POST to backend ---
+  try {
+    const res = await fetch(BACKEND_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(result),
+    });
+
+    const out = await res.json();
+    console.log("📤 Upload response:", out);
+  } catch (err) {
+    console.error("❌ Upload failed:", err.message);
+  }
 })();

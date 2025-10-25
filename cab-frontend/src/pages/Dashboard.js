@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from "react";
-import { Grid, Box, CircularProgress, Typography } from "@mui/material";
+import {
+    Box,
+    CircularProgress,
+    TextField,
+    MenuItem,
+} from "@mui/material";
 import { fetchAuctions } from "../api";
 import AuctionCard from "../components/AuctionCard";
-import Filters from "../components/Filters";
 
 export default function Dashboard() {
     const [auctions, setAuctions] = useState([]);
     const [filtered, setFiltered] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [filters, setFilters] = useState({
-        search: "",
-        drivetrain: "",
-        exteriorColor: "",
-    });
+    const [filters, setFilters] = useState({ make: "", model: "" });
 
-    // Fetch auctions on load
     useEffect(() => {
         (async () => {
             try {
@@ -22,56 +21,105 @@ export default function Dashboard() {
                 setAuctions(data);
                 setFiltered(data);
             } catch (err) {
-                console.error("Failed to load auctions:", err);
+                console.error("Failed to fetch auctions:", err);
             } finally {
                 setLoading(false);
             }
         })();
     }, []);
 
-    // Filter auctions when filters change
     useEffect(() => {
-        const filteredData = auctions.filter((a) => {
-            return (
-                (!filters.search ||
-                    `${a.make} ${a.model}`
-                        .toLowerCase()
-                        .includes(filters.search.toLowerCase())) &&
-                (!filters.drivetrain ||
-                    a.drivetrain?.toLowerCase() === filters.drivetrain.toLowerCase()) &&
-                (!filters.exteriorColor ||
-                    a.exteriorColor
-                        ?.toLowerCase()
-                        .includes(filters.exteriorColor.toLowerCase()))
-            );
-        });
+        const filteredData = auctions.filter(
+            (a) =>
+                (!filters.make ||
+                    a.make?.toLowerCase().includes(filters.make.toLowerCase())) &&
+                (!filters.model ||
+                    a.model?.toLowerCase().includes(filters.model.toLowerCase()))
+        );
         setFiltered(filteredData);
     }, [filters, auctions]);
 
+    const makes = [...new Set(auctions.map((a) => a.make))].sort();
+    const models = [...new Set(auctions.map((a) => a.model))].sort();
+
     return (
-        <Box sx={{ p: 3 }}>
-            <Typography variant="h4" fontWeight="bold" sx={{ mb: 2 }}>
-                Featured Auctions
-            </Typography>
-
-            <Filters filters={filters} setFilters={setFilters} />
-
-            {loading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 6 }}>
-                    <CircularProgress />
-                </Box>
-            ) : filtered.length === 0 ? (
-                <Typography variant="body1" color="text.secondary">
-                    No matching results found.
-                </Typography>
-            ) : (
-                <Grid container spacing={3}>
-                    {filtered.map((auction) => (
-                        <Grid item xs={12} sm={6} md={4} lg={3} key={auction.id}>
-                            <AuctionCard auction={auction} />
-                        </Grid>
+        <Box
+            sx={{
+                p: 4,
+                backgroundColor: "background.default",
+                minHeight: "100vh",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+            }}
+        >
+            {/* Filters */}
+            <Box
+                sx={{
+                    display: "flex",
+                    gap: 2,
+                    mb: 4,
+                    justifyContent: "center",
+                    flexWrap: "wrap",
+                    width: "100%",
+                    maxWidth: "1200px",
+                }}
+            >
+                <TextField
+                    select
+                    label="Make"
+                    value={filters.make}
+                    onChange={(e) => setFilters({ ...filters, make: e.target.value })}
+                    sx={{ minWidth: 200 }}
+                >
+                    <MenuItem value="">All</MenuItem>
+                    {makes.map((make) => (
+                        <MenuItem key={make} value={make}>
+                            {make}
+                        </MenuItem>
                     ))}
-                </Grid>
+                </TextField>
+
+                <TextField
+                    select
+                    label="Model"
+                    value={filters.model}
+                    onChange={(e) => setFilters({ ...filters, model: e.target.value })}
+                    sx={{ minWidth: 200 }}
+                >
+                    <MenuItem value="">All</MenuItem>
+                    {models.map((model) => (
+                        <MenuItem key={model} value={model}>
+                            {model}
+                        </MenuItem>
+                    ))}
+                </TextField>
+            </Box>
+
+            {/* Strict 4-column grid */}
+            {loading ? (
+                <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+                    <CircularProgress color="primary" />
+                </Box>
+            ) : (
+                <Box
+                    sx={{
+                        display: "grid",
+                        gridTemplateColumns: {
+                            xs: "repeat(1, 1fr)",
+                            sm: "repeat(2, 1fr)",
+                            md: "repeat(3, 1fr)",
+                            lg: "repeat(4, 1fr)",
+                        },
+                        gap: 3,
+                        width: "100%",
+                        maxWidth: "1600px",
+                    }}
+                >
+                    {filtered.map((auction) => (
+                        <AuctionCard key={auction.id} auction={auction} />
+                    ))}
+                </Box>
             )}
         </Box>
     );

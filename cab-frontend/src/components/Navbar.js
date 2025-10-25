@@ -1,29 +1,21 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, Box, Button } from "@mui/material";
+import { AppBar, Toolbar, Typography } from "@mui/material";
 
 export default function Navbar() {
-    const menuItems = [
-        "Auctions",
-        "Sell a Car",
-        "Community",
-        "Events",
-        "About Us",
-        "Leaderboard",
-    ];
-
     return (
-        <AppBar position="static" color="default" elevation={1}>
-            <Toolbar sx={{ justifyContent: "space-between" }}>
-                <Typography variant="h6" fontWeight="bold">
-                    Cars & Bids Labs
+        <AppBar position="sticky" color="transparent" elevation={1}>
+            <Toolbar sx={{ justifyContent: "center" }}>
+                <Typography
+                    variant="h5"
+                    fontWeight="bold"
+                    sx={{
+                        letterSpacing: "0.5px",
+                        textAlign: "center",
+                        color: "#00B8D9",
+                    }}
+                >
+                    Cars & Bids Labs — Dashboard
                 </Typography>
-                <Box>
-                    {menuItems.map((item) => (
-                        <Button key={item} color="inherit" sx={{ textTransform: "none" }}>
-                            {item}
-                        </Button>
-                    ))}
-                </Box>
             </Toolbar>
         </AppBar>
     );

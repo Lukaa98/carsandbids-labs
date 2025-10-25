@@ -1,8 +1,8 @@
 {
   "files": {
-    "main.js": "/cab-frontend/static/js/main.6ac3f28b.js",
-    "index.html": "/cab-frontend/index.html",
-    "main.6ac3f28b.js.map": "/cab-frontend/static/js/main.6ac3f28b.js.map"
+    "main.js": "/carsandbids-labs/static/js/main.6ac3f28b.js",
+    "index.html": "/carsandbids-labs/index.html",
+    "main.6ac3f28b.js.map": "/carsandbids-labs/static/js/main.6ac3f28b.js.map"
   },
   "entrypoints": [
     "static/js/main.6ac3f28b.js"

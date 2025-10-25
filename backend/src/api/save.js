@@ -5,33 +5,64 @@ export async function handleSave(request, env) {
     const body = await request.json();
     console.log("📩 Received:", body.url);
 
-    // Defensive: ensure all bound values are strings (or null)
-    const clean = (v) => (v === undefined ? null : v);
+    const v = body.vehicle || {};
+    const s = v.specs || {};
+    const b = v.body || {};
+    const status = body.status || {};
+    const seller = body.seller || {};
+    const media = body.media || {};
 
     const stmt = env.DB.prepare(`
       INSERT INTO auctionResults (
-        url, title, make, model, mileage, vin, engine, drivetrain,
-        transmission, bodyStyle, exteriorColor, interiorColor,
-        titleStatus, location, seller
+        auctionId, url, title,
+        year, make, model, trim, bodyStyle, segment, exteriorColor, interiorColor,
+        engine, drivetrain, transmission, mileage, mileageUnit, vin, titleStatus,
+        sellerType, location,
+        saleType, finalSalePrice, numBids, numComments, numViews, numWatchers, endDate,
+        mainImageUrl, imageCount,
+        rawVehicle, rawStatus, rawSeller, rawMedia
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(url) DO NOTHING
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(auctionId) DO NOTHING
     `).bind(
-      clean(body.url),
-      clean(body.title),
-      clean(body.make),
-      clean(body.model),
-      clean(body.mileage),
-      clean(body.vin),
-      clean(body.engine),
-      clean(body.drivetrain),
-      clean(body.transmission),
-      clean(body.bodyStyle),
-      clean(body.exteriorColor),
-      clean(body.interiorColor),
-      clean(body.titleStatus),
-      clean(body.location),
-      clean(body.seller)
+      body.auctionId,
+      body.url,
+      body.title,
+
+      v.year,
+      v.make,
+      v.model,
+      v.trim,
+      b.style,
+      b.segment,
+      b.colorExterior,
+      b.colorInterior,
+      s.engine,
+      s.drivetrain,
+      s.transmission,
+      v.mileage?.value,
+      v.mileage?.unit,
+      v.vin,
+      v.titleStatus,
+
+      seller.type,
+      seller.location,
+
+      status.saleType,
+      status.finalSalePrice,
+      status.numBids,
+      status.numComments,
+      status.numViews,
+      status.numWatchers,
+      status.endDate,
+
+      media.mainImageUrl,
+      media.imageCount,
+
+      JSON.stringify(v),
+      JSON.stringify(status),
+      JSON.stringify(seller),
+      JSON.stringify(media)
     );
 
     await stmt.run();

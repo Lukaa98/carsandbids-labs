@@ -2,10 +2,18 @@ import React from "react";
 import { Card, CardMedia, CardContent, Typography, Box } from "@mui/material";
 
 export default function AuctionCard({ auction }) {
+    // Determine display label and amount
+    let priceLabel = "—";
+    if (auction.finalSalePrice) {
+        priceLabel = `Sold for $${auction.finalSalePrice.toLocaleString()}`;
+    } else if (auction.finalBidPrice) {
+        priceLabel = `Bid to $${auction.finalBidPrice.toLocaleString()}`;
+    }
+
     return (
         <Card
             sx={{
-                height: 360, // ⬅ increased by 20px
+                height: 360,
                 display: "flex",
                 flexDirection: "column",
                 borderRadius: 3,
@@ -30,7 +38,7 @@ export default function AuctionCard({ auction }) {
                     flexDirection: "column",
                     justifyContent: "space-between",
                     color: "white",
-                    pb: 1.5, // extra bottom padding so price never cuts off
+                    pb: 1.5,
                 }}
             >
                 <Box>
@@ -50,6 +58,7 @@ export default function AuctionCard({ auction }) {
                         {auction.engine} · {auction.drivetrain}
                     </Typography>
                 </Box>
+
                 <Box sx={{ mt: 1.5 }}>
                     <Typography variant="subtitle2">
                         Sale Type: {auction.saleType}
@@ -57,12 +66,16 @@ export default function AuctionCard({ auction }) {
                     <Typography
                         variant="subtitle1"
                         fontWeight="bold"
-                        color="white"
+                        color={
+                            auction.finalSalePrice
+                                ? "success.main"
+                                : auction.finalBidPrice
+                                    ? "warning.main"
+                                    : "text.secondary"
+                        }
                         sx={{ lineHeight: 1.4 }}
                     >
-                        {auction.finalSalePrice
-                            ? `$${auction.finalSalePrice.toLocaleString()}`
-                            : "—"}
+                        {priceLabel}
                     </Typography>
                 </Box>
             </CardContent>

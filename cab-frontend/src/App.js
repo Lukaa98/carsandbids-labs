@@ -1,5 +1,6 @@
 import React from "react";
 import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 
 // 🎨 Clean dark theme with white text
@@ -22,7 +23,12 @@ export default function App() {
   return (
     <ThemeProvider theme={darkTheme}>
       <CssBaseline />
-      <Dashboard />
+      <Router>
+        <Routes>
+          <Route path="/carsandbids-labs" element={<Dashboard />} />
+          <Route path="/carsandbids-labs/:page" element={<Dashboard />} />
+        </Routes>
+      </Router>
     </ThemeProvider>
   );
 }

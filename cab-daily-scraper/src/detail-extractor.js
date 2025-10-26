@@ -40,11 +40,13 @@ export async function enrichOne(browser, url) {
     const rawData = await page.evaluate(() => {
       const norm = (s) => (s || "").replace(/\s+/g, " ").trim();
 
-      const title = norm(
+      // Clean title extraction (remove “Save”)
+      let title = norm(
         document.querySelector("h1")?.textContent ||
         document.querySelector('meta[property="og:title"]')?.content ||
         ""
       );
+      title = title.replace(/\bSave\b/g, "").trim();
 
       // QUICK FACTS
       const specMap = {};
@@ -157,7 +159,6 @@ export async function enrichOne(browser, url) {
         }
       }
 
-
       // Step 0: Directly check for the full-size main photo
       let mainImageUrl = null;
       const mainImgEl = document.querySelector(".preload-wrap.main.loaded img");
@@ -196,6 +197,10 @@ export async function enrichOne(browser, url) {
       if (match) fields.year = match[0];
     }
 
+    // Clean up “Save” if it leaked into make/model fields
+    if (fields.make) fields.make = fields.make.replace(/\bSave\b/g, "").trim();
+    if (fields.model) fields.model = fields.model.replace(/\bSave\b/g, "").trim();
+
     // --- Build structured result ---
     const result = {
       auctionId: url.split("/auctions/")[1]?.split("/")[0] || null,
@@ -224,9 +229,7 @@ export async function enrichOne(browser, url) {
           performance: { zeroToSixty: null, topSpeedMph: null },
         },
         mileage: {
-          value: fields.mileage
-            ? Number(fields.mileage.replace(/[^0-9]/g, ""))
-            : null,
+          value: fields.mileage ? Number(fields.mileage.replace(/[^0-9]/g, "")) : null,
           unit: fields.mileage?.includes("km") ? "km" : "miles",
         },
         vin: fields.vin || null,

@@ -42,16 +42,31 @@ async function readResults() {
   }
 }
 
+// ✅ Clean "Save" suffix if leaked into title/model
+function sanitizeSaveLeak(result) {
+  if (result?.title) result.title = result.title.replace(/\s*Save$/, "").trim();
+  if (result?.vehicle?.model)
+    result.vehicle.model = result.vehicle.model.replace(/\s*Save$/, "").trim();
+  if (result?.vehicle?.make)
+    result.vehicle.make = result.vehicle.make.replace(/\s*Save$/, "").trim();
+  return result;
+}
+
 // ✅ Replaces existing auctionId entry if found
 async function appendResult(result) {
   const arr = await readResults();
   const newId = result.result?.auctionId;
 
+  if (result.result) {
+    // Clean before writing
+    result.result = sanitizeSaveLeak(result.result);
+  }
+
   if (!newId) {
     console.warn("⚠️ Missing auctionId for result:", result.url);
     arr.push(result);
   } else {
-    const existingIndex = arr.findIndex((r) => r.result?.auctionId === newId);
+    const existingIndex = arr.findIndex(r => r.result?.auctionId === newId);
     if (existingIndex >= 0) {
       console.log(`♻️ Updating existing auction: ${newId}`);
       arr[existingIndex] = result; // replace old
@@ -69,11 +84,11 @@ async function exportCsv(jsonArr) {
   const csvLines = [
     ["url", "time", ...headers].join(","),
     ...jsonArr.map(
-      (r) =>
+      r =>
         [
           r.url,
           r.time,
-          ...headers.map((h) => JSON.stringify(r.result[h] || "")),
+          ...headers.map(h => JSON.stringify(r.result[h] || "")),
         ].join(",")
     ),
   ];
@@ -104,19 +119,22 @@ async function uploadResults(results) {
     const batch = results.slice(i, i + batchSize);
 
     await Promise.all(
-      batch.map(async (item) => {
+      batch.map(async item => {
         try {
+          // Clean before upload
+          const clean = sanitizeSaveLeak(item.result);
+
           const res = await fetch(BACKEND_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(item.result),
+            body: JSON.stringify(clean),
           });
 
           const out = await res.json();
           if (out.ok) {
-            console.log(`✅ [${item.result.auctionId}] ${item.result.url} → Saved/Updated`);
+            console.log(`✅ [${clean.auctionId}] ${clean.url} → Saved/Updated`);
           } else {
-            console.warn(`⚠️ [${item.result.auctionId}] ${out.error || "Unknown backend error"}`);
+            console.warn(`⚠️ [${clean.auctionId}] ${out.error || "Unknown backend error"}`);
           }
         } catch (err) {
           console.error("❌ Upload failed:", item.result?.url || "?", err.message);
@@ -178,7 +196,7 @@ async function main() {
   }
 
   console.log(`✅ Found ${entries.length} entries (processing up to ${MAX_URLS}).`);
-  const toProcess = entries.slice(0, MAX_URLS).map((e) => e.url);
+  const toProcess = entries.slice(0, MAX_URLS).map(e => e.url);
 
   const results = [];
 
@@ -186,7 +204,8 @@ async function main() {
     const url = toProcess[i];
     console.log(`\n--- (${i + 1}/${toProcess.length}) Processing ${url}`);
     try {
-      const res = await enrichOne(browser, url);
+      let res = await enrichOne(browser, url);
+      res = sanitizeSaveLeak(res);
       const item = { url, time: new Date().toISOString(), result: res };
       await appendResult(item);
       results.push(item);
@@ -211,7 +230,7 @@ async function main() {
   await browser.close();
 }
 
-main().catch((err) => {
+main().catch(err => {
   console.error("💥 Fatal error:", err);
   process.exit(1);
 });

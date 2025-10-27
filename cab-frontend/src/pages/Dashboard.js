@@ -27,7 +27,7 @@ export default function Dashboard() {
         (async () => {
             try {
                 setLoading(true);
-                const data = await fetchAuctions(pageNum, 50); // uses backend pagination
+                const data = await fetchAuctions(pageNum, 50);
                 setAuctions(data.results || []);
                 setFiltered(data.results || []);
                 setMeta({ totalPages: data.totalPages || 1, total: data.total || 0 });
@@ -39,7 +39,7 @@ export default function Dashboard() {
         })();
     }, [pageNum]);
 
-    // Filter within current page
+    // Filter logic
     useEffect(() => {
         const filteredData = auctions.filter(
             (a) =>
@@ -51,8 +51,13 @@ export default function Dashboard() {
         setFiltered(filteredData);
     }, [filters, auctions]);
 
-    const makes = [...new Set(auctions.map((a) => a.make))].sort();
-    const models = [...new Set(auctions.map((a) => a.model))].sort();
+    // Derive unique makes and models (context-aware)
+    const makes = [...new Set(auctions.map((a) => a.make).filter(Boolean))].sort();
+    const modelsByMake = auctions
+        .filter((a) => a.make === filters.make)
+        .map((a) => a.model)
+        .filter(Boolean);
+    const uniqueModels = [...new Set(modelsByMake)].sort();
 
     const handlePageChange = (_, value) => navigate(`/carsandbids-labs/${value}`);
 
@@ -79,11 +84,14 @@ export default function Dashboard() {
                     maxWidth: "1200px",
                 }}
             >
+                {/* Make Filter */}
                 <TextField
                     select
                     label="Make"
                     value={filters.make}
-                    onChange={(e) => setFilters({ ...filters, make: e.target.value })}
+                    onChange={(e) =>
+                        setFilters({ make: e.target.value, model: "" }) // reset model when make changes
+                    }
                     sx={{ minWidth: 200 }}
                 >
                     <MenuItem value="">All</MenuItem>
@@ -94,15 +102,17 @@ export default function Dashboard() {
                     ))}
                 </TextField>
 
+                {/* Model Filter */}
                 <TextField
                     select
                     label="Model"
                     value={filters.model}
                     onChange={(e) => setFilters({ ...filters, model: e.target.value })}
                     sx={{ minWidth: 200 }}
+                    disabled={!filters.make} // disable until make selected
                 >
                     <MenuItem value="">All</MenuItem>
-                    {models.map((model) => (
+                    {uniqueModels.map((model) => (
                         <MenuItem key={model} value={model}>
                             {model}
                         </MenuItem>
@@ -132,7 +142,7 @@ export default function Dashboard() {
                         }}
                     >
                         {filtered.map((auction) => (
-                            <AuctionCard key={auction.id} auction={auction} />
+                            <AuctionCard key={auction.id || auction.auctionId} auction={auction} />
                         ))}
                     </Box>
 

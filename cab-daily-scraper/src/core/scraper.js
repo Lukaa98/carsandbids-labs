@@ -9,11 +9,17 @@ import { sleep } from "./utils.js";
 
 puppeteer.use(StealthPlugin());
 
-const OUTPUT_DIR = path.resolve("./output");
-const TODAY = new Date().toISOString().slice(0, 10); // e.g. "2025-10-25"
+// ✅ Output one directory above /core
+const OUTPUT_DIR = path.resolve("../output");
+const TODAY = new Date().toISOString().slice(0, 10);
 const OUTPUT_JSON = path.join(OUTPUT_DIR, `${TODAY}.json`);
 const OUTPUT_CSV = path.join(OUTPUT_DIR, `${TODAY}.csv`);
-const MAX_URLS = 50;
+
+// ✅ Optional --limit argument for local testing
+const argLimit = process.argv.find(arg => arg.startsWith("--limit="));
+const MAX_URLS = argLimit ? Number(argLimit.split("=")[1]) : 50;
+console.log(`🔢 Scrape limit set to ${MAX_URLS} listings${MAX_URLS < 50 ? " (local test mode)" : ""}`);
+
 const PAGE_DELAY_MS = 2000;
 const BETWEEN_ENRICH_MS = 3000 + Math.floor(Math.random() * 2000);
 const BACKEND_URL = "https://backend.carsandbids-labs.workers.dev/save";

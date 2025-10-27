@@ -12,7 +12,7 @@ export async function handleSave(request, env) {
     const seller = body.seller || {};
     const media = body.media || {};
 
-    // Prepare insert
+    // Prepare insert or update (UPSERT)
     const stmt = env.DB.prepare(`
       INSERT INTO auctionResults (
         auctionId, url, title,
@@ -24,7 +24,40 @@ export async function handleSave(request, env) {
         rawVehicle, rawStatus, rawSeller, rawMedia
       )
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      ON CONFLICT(auctionId) DO NOTHING
+      ON CONFLICT(auctionId) DO UPDATE SET
+        url = excluded.url,
+        title = excluded.title,
+        year = excluded.year,
+        make = excluded.make,
+        model = excluded.model,
+        trim = excluded.trim,
+        bodyStyle = excluded.bodyStyle,
+        segment = excluded.segment,
+        exteriorColor = excluded.exteriorColor,
+        interiorColor = excluded.interiorColor,
+        engine = excluded.engine,
+        drivetrain = excluded.drivetrain,
+        transmission = excluded.transmission,
+        mileage = excluded.mileage,
+        mileageUnit = excluded.mileageUnit,
+        vin = excluded.vin,
+        titleStatus = excluded.titleStatus,
+        sellerType = excluded.sellerType,
+        location = excluded.location,
+        saleType = excluded.saleType,
+        finalSalePrice = excluded.finalSalePrice,
+        finalBidPrice = excluded.finalBidPrice,
+        numBids = excluded.numBids,
+        numComments = excluded.numComments,
+        numViews = excluded.numViews,
+        numWatchers = excluded.numWatchers,
+        endDate = excluded.endDate,
+        mainImageUrl = excluded.mainImageUrl,
+        imageCount = excluded.imageCount,
+        rawVehicle = excluded.rawVehicle,
+        rawStatus = excluded.rawStatus,
+        rawSeller = excluded.rawSeller,
+        rawMedia = excluded.rawMedia
     `).bind(
       body.auctionId,
       body.url,
@@ -68,10 +101,10 @@ export async function handleSave(request, env) {
     );
 
     await stmt.run();
-    console.log("✅ Inserted successfully:", body.url);
+    console.log("✅ Upsert successful:", body.url);
     return jsonResponse({ ok: true, saved: body.url });
   } catch (err) {
-    console.error("❌ D1 insert failed:", err.stack || err);
+    console.error("❌ D1 insert/update failed:", err.stack || err);
     return errorResponse(err);
   }
 }

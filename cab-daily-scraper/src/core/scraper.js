@@ -114,38 +114,29 @@ async function handleCloudflare(page) {
 async function uploadResults(results) {
   console.log(`📤 Uploading ${results.length} scraped results to backend...`);
 
-  const batchSize = 10;
-  for (let i = 0; i < results.length; i += batchSize) {
-    const batch = results.slice(i, i + batchSize);
+  for (let i = 0; i < results.length; i++) {
+    const item = results[i];
+    try {
+      const clean = sanitizeSaveLeak(item.result);
 
-    await Promise.all(
-      batch.map(async item => {
-        try {
-          // Clean before upload
-          const clean = sanitizeSaveLeak(item.result);
+      const res = await fetch(BACKEND_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(clean),
+      });
 
-          const res = await fetch(BACKEND_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(clean),
-          });
-
-          const out = await res.json();
-          if (out.ok) {
-            console.log(`✅ [${clean.auctionId}] ${clean.url} → Saved/Updated`);
-          } else {
-            console.warn(`⚠️ [${clean.auctionId}] ${out.error || "Unknown backend error"}`);
-          }
-        } catch (err) {
-          console.error("❌ Upload failed:", item.result?.url || "?", err.message);
-        }
-      })
-    );
-
-    if (i + batchSize < results.length) {
-      console.log("⏳ Waiting before next batch...");
-      await sleep(1000);
+      const out = await res.json();
+      if (out.ok) {
+        console.log(`✅ (${i + 1}/${results.length}) [${clean.auctionId}] ${clean.url} → Saved/Updated`);
+      } else {
+        console.warn(`⚠️ (${i + 1}/${results.length}) [${clean.auctionId}] ${out.error || "Unknown backend error"}`);
+      }
+    } catch (err) {
+      console.error(`❌ (${i + 1}/${results.length}) Upload failed: ${item.result?.url || "?"} → ${err.message}`);
     }
+
+    // small delay to avoid rate limiting
+    await sleep(300);
   }
 
   console.log("🎯 Upload completed.");

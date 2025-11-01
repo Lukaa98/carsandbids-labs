@@ -1,9 +1,41 @@
+// url-collector.js
+/**
+ * Collects all visible auction listing entries from Cars & Bids “Past Auctions”.
+ * Waits for infinite scroll to finish, then returns ordered list of { url, ended } objects.
+ */
 export async function collectListingEntries(page) {
-  return await page.evaluate(() => {
+  console.log("⏳ Scrolling through Cars & Bids past auctions...");
+
+  let lastHeight = 0;
+  let stableCount = 0;
+
+  // Keep scrolling until no new content appears
+  for (let i = 0; i < 20; i++) {
+    await page.evaluate(() => window.scrollBy(0, document.body.scrollHeight));
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const newHeight = await page.evaluate(() => document.body.scrollHeight);
+    if (newHeight === lastHeight) {
+      stableCount++;
+    } else {
+      stableCount = 0;
+    }
+    lastHeight = newHeight;
+
+    if (stableCount >= 3) {
+      console.log("✅ Page fully loaded — no new auctions appearing");
+      break;
+    }
+  }
+
+  // Now evaluate once DOM is fully hydrated and scrolled
+  const entries = await page.evaluate(() => {
     const entries = [];
     const seen = new Set();
 
-    const items = document.querySelectorAll(".auctions-list.past-auctions .auction-item");
+    const items = document.querySelectorAll(
+      ".auctions-list.past-auctions .auction-item"
+    );
 
     for (const item of items) {
       const a = item.querySelector(".auction-title a[href*='/auctions/']");
@@ -27,4 +59,8 @@ export async function collectListingEntries(page) {
 
     return entries;
   });
+
+  // Return in DOM order (newest → oldest)
+  console.log(`✅ Found ${entries.length} auctions in visible order`);
+  return entries;
 }

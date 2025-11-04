@@ -27,13 +27,15 @@ export async function handleAuctions(env, url) {
 
   const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
+  //  Order by ID DESC to show newest → oldest
   const { results } = await env.DB.prepare(
     `SELECT * FROM auctionResults
      ${whereClause}
-     ORDER BY datetime(created_at) DESC
+     ORDER BY id ASC
      LIMIT ? OFFSET ?`
   ).bind(...params, limit, offset).all();
 
+  // Count total for pagination
   const countRow = await env.DB.prepare(
     `SELECT COUNT(*) AS count FROM auctionResults ${whereClause}`
   ).bind(...params).first();

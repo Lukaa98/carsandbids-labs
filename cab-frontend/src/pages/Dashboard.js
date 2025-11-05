@@ -6,10 +6,12 @@ import {
     MenuItem,
     Pagination,
     Button,
+    Typography,
 } from "@mui/material";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { fetchAuctions } from "../api";
 import AuctionCard from "../components/AuctionCard";
+import PriceYearChart from "../components/PriceYearChart";
 
 export default function Dashboard() {
     const { page = "1" } = useParams();
@@ -26,6 +28,7 @@ export default function Dashboard() {
 
     // 🔹 Fetch from backend whenever page/make/model changes
     useEffect(() => {
+        let isMounted = true;
         (async () => {
             try {
                 setLoading(true);
@@ -35,20 +38,25 @@ export default function Dashboard() {
                     make,
                     model,
                 });
-                setAuctions(data.results || []);
-                setMeta({
-                    totalPages: data.totalPages || 1,
-                    total: data.total || 0,
-                });
+                if (isMounted) {
+                    setAuctions(data.results || []);
+                    setMeta({
+                        totalPages: data.totalPages || 1,
+                        total: data.total || 0,
+                    });
+                }
             } catch (err) {
                 console.error("Failed to fetch auctions:", err);
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         })();
+        return () => {
+            isMounted = false;
+        };
     }, [pageNum, make, model]);
 
-    // 🔹 Derive unique makes/models from current page dataset
+    // Derive unique makes/models from current page dataset
     const makes = [...new Set(auctions.map((a) => a.make).filter(Boolean))].sort();
     const modelsByMake = auctions
         .filter((a) => a.make === make)
@@ -56,7 +64,7 @@ export default function Dashboard() {
         .filter(Boolean);
     const uniqueModels = [...new Set(modelsByMake)].sort();
 
-    // 🔹 When filters change, update URL query + reset page to 1
+    // When filters change, update URL query + reset page to 1
     const handleMakeChange = (e) => {
         const newMake = e.target.value;
         setSearchParams({ make: newMake });
@@ -78,7 +86,7 @@ export default function Dashboard() {
         navigate(`/carsandbids-labs/1`);
     };
 
-    // 🔹 Pagination retains filters
+    // Pagination retains filters
     const handlePageChange = (_, value) => {
         const params = new URLSearchParams();
         if (make) params.set("make", make);
@@ -102,7 +110,7 @@ export default function Dashboard() {
                 sx={{
                     display: "flex",
                     gap: 2,
-                    mb: 4,
+                    mb: 2,
                     justifyContent: "center",
                     flexWrap: "wrap",
                     width: "100%",
@@ -147,13 +155,19 @@ export default function Dashboard() {
                 </Button>
             </Box>
 
-            {/* 🔹 Auction Cards */}
+            {/* Chart Between Filters and Cards */}
+            {!loading && make && model && auctions.length > 0 && (
+                <PriceYearChart auctions={auctions} />
+            )}
+
+            {/* Loading or Results */}
             {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
                     <CircularProgress color="primary" />
                 </Box>
             ) : (
                 <>
+                    {/* Auction Cards */}
                     <Box
                         sx={{
                             display: "grid",
@@ -176,7 +190,13 @@ export default function Dashboard() {
                         ))}
                     </Box>
 
-                    {/* 🔹 Pagination */}
+                    {!loading && auctions.length === 0 && (
+                        <Typography variant="h6" color="text.secondary" sx={{ mt: 6 }}>
+                            No auctions found for this filter.
+                        </Typography>
+                    )}
+
+                    {/* Pagination */}
                     <Box sx={{ mt: 4 }}>
                         <Pagination
                             count={meta.totalPages}

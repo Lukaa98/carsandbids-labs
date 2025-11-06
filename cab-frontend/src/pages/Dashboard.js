@@ -182,7 +182,7 @@ export default function Dashboard() {
                             maxWidth: "1600px",
                         }}
                     >
-                        {auctions.map((auction) => (
+                        {[...auctions].reverse().map((auction) => (
                             <AuctionCard
                                 key={auction.id || auction.auctionId}
                                 auction={auction}

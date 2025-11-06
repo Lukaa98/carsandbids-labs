@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
     Card,
     CardMedia,
@@ -10,11 +10,16 @@ import {
     DialogTitle,
     Button,
     Divider,
+    CircularProgress,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import PriceYearChart from "./PriceYearChart";
+import { fetchAuctions } from "../api";
 
 export default function AuctionCard({ auction }) {
     const [open, setOpen] = useState(false);
+    const [relatedAuctions, setRelatedAuctions] = useState([]);
+    const [loadingChart, setLoadingChart] = useState(false);
 
     // Determine display label and amount
     let priceLabel = "—";
@@ -23,6 +28,28 @@ export default function AuctionCard({ auction }) {
     } else if (auction.finalBidPrice) {
         priceLabel = `Bid to $${auction.finalBidPrice.toLocaleString()}`;
     }
+
+    // 🔹 Fetch related auctions (same make/model) when dialog opens
+    useEffect(() => {
+        if (open) {
+            (async () => {
+                try {
+                    setLoadingChart(true);
+                    const data = await fetchAuctions({
+                        page: 1,
+                        limit: 100,
+                        make: auction.make,
+                        model: auction.model,
+                    });
+                    setRelatedAuctions(data.results || []);
+                } catch (err) {
+                    console.error("Failed to fetch related auctions:", err);
+                } finally {
+                    setLoadingChart(false);
+                }
+            })();
+        }
+    }, [open, auction.make, auction.model]);
 
     return (
         <>
@@ -100,10 +127,16 @@ export default function AuctionCard({ auction }) {
             </Card>
 
             {/* Dialog */}
-            <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+            <Dialog
+                open={open}
+                onClose={() => setOpen(false)}
+                maxWidth="md"
+                fullWidth
+            >
                 <DialogTitle sx={{ fontWeight: "bold", textAlign: "center" }}>
                     {auction.year} {auction.make} {auction.model}
                 </DialogTitle>
+
                 <DialogContent sx={{ p: 3 }}>
                     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
                         <img
@@ -118,40 +151,77 @@ export default function AuctionCard({ auction }) {
 
                         <Divider sx={{ my: 2 }} />
 
-                        <Typography variant="subtitle1" fontWeight="bold">
-                            Specifications
-                        </Typography>
-                        <Typography variant="body2">
-                            Engine: {auction.engine || "N/A"}
-                            <br />
-                            Drivetrain: {auction.drivetrain || "N/A"}
-                            <br />
-                            Transmission: {auction.transmission || "N/A"}
-                            <br />
-                            Exterior: {auction.exteriorColor || "N/A"}
-                            <br />
-                            Interior: {auction.interiorColor || "N/A"}
-                        </Typography>
+                        {/* 🔹 Side-by-side Specs + Sale Info */}
+                        <Box
+                            sx={{
+                                display: "flex",
+                                flexDirection: { xs: "column", md: "row" },
+                                justifyContent: "space-between",
+                                gap: 4,
+                            }}
+                        >
+                            {/* Specifications */}
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                    Specifications
+                                </Typography>
+                                <Typography variant="body2">
+                                    Engine: {auction.engine || "N/A"}
+                                    <br />
+                                    Drivetrain: {auction.drivetrain || "N/A"}
+                                    <br />
+                                    Transmission: {auction.transmission || "N/A"}
+                                    <br />
+                                    Exterior: {auction.exteriorColor || "N/A"}
+                                    <br />
+                                    Interior: {auction.interiorColor || "N/A"}
+                                </Typography>
+                            </Box>
+
+                            {/* Sale Info */}
+                            <Box sx={{ flex: 1 }}>
+                                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                    Sale Info
+                                </Typography>
+                                <Typography variant="body2">
+                                    Sale Type: {auction.saleType || "—"}
+                                    <br />
+                                    Final Price:{" "}
+                                    {auction.finalSalePrice
+                                        ? `$${auction.finalSalePrice.toLocaleString()}`
+                                        : auction.finalBidPrice
+                                            ? `$${auction.finalBidPrice.toLocaleString()}`
+                                            : "—"}
+                                    <br />
+                                    Bids: {auction.numBids || 0} · Comments:{" "}
+                                    {auction.numComments || 0}
+                                    <br />
+                                    Views: {auction.numViews || 0}
+                                </Typography>
+                            </Box>
+                        </Box>
 
                         <Divider sx={{ my: 2 }} />
 
-                        <Typography variant="subtitle1" fontWeight="bold">
-                            Sale Info
-                        </Typography>
-                        <Typography variant="body2">
-                            Sale Type: {auction.saleType || "—"}
-                            <br />
-                            Final Price:{" "}
-                            {auction.finalSalePrice
-                                ? `$${auction.finalSalePrice.toLocaleString()}`
-                                : auction.finalBidPrice
-                                    ? `$${auction.finalBidPrice.toLocaleString()}`
-                                    : "—"}
-                            <br />
-                            Bids: {auction.numBids || 0} · Comments: {auction.numComments || 0}
-                            <br />
-                            Views: {auction.numViews || 0}
-                        </Typography>
+                        {/* 🔹 Related Price-Year Chart */}
+                        <Box sx={{ textAlign: "center", my: 2 }}>
+                            <Typography
+                                variant="subtitle1"
+                                color="text.secondary"
+                                gutterBottom
+                            >
+                                {auction.make} {auction.model} — Price vs. Year
+                            </Typography>
+                            {loadingChart ? (
+                                <CircularProgress color="primary" size={32} />
+                            ) : relatedAuctions.length > 0 ? (
+                                <PriceYearChart auctions={relatedAuctions} />
+                            ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                    No data available for this model yet.
+                                </Typography>
+                            )}
+                        </Box>
 
                         <Divider sx={{ my: 2 }} />
 

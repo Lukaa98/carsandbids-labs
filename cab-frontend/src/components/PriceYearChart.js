@@ -15,10 +15,11 @@ export default function PriceYearChart({ auctions }) {
   const [hoveredCar, setHoveredCar] = useState(null);
   const [anchorPos, setAnchorPos] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef(null);
+  const chartContainerRef = useRef(null);
 
   if (!auctions || auctions.length === 0) return null;
 
-  // Prepare clean data for chart
+  // Prepare chart data
   const data = auctions
     .map((a) => {
       const year = Number(a.year);
@@ -36,24 +37,33 @@ export default function PriceYearChart({ auctions }) {
     .filter(Boolean)
     .sort((a, b) => a.year - b.year);
 
-  // Show popup near the hovered dot
+  // Hover logic — position tooltip relative to container
   const handleMouseMove = (dotInfo) => {
-    if (dotInfo && dotInfo.payload) {
+    if (dotInfo && dotInfo.payload && chartContainerRef.current) {
       clearTimeout(timeoutRef.current);
-      const { chartX, chartY } = dotInfo;
+
+      const rect = chartContainerRef.current.getBoundingClientRect();
+      const svgX = dotInfo.cx; // ✅ actual SVG X coordinate
+      const svgY = dotInfo.cy; // ✅ actual SVG Y coordinate
+
+      // Translate to container coordinate space
+      const relativeX = svgX;
+      const relativeY = svgY;
+
       const { year, price, label, image, url, location } = dotInfo.payload;
-      setAnchorPos({ x: chartX, y: chartY });
+      setAnchorPos({ x: relativeX, y: relativeY });
       setHoveredCar({ year, price, label, image, url, location });
     }
   };
 
   // Start delay before hiding popup
   const hideWithDelay = () => {
-    timeoutRef.current = setTimeout(() => setHoveredCar(null), 350);
+    timeoutRef.current = setTimeout(() => setHoveredCar(null), 300);
   };
 
   return (
     <Box
+      ref={chartContainerRef}
       sx={{
         width: "100%",
         maxWidth: "1000px",
@@ -65,12 +75,7 @@ export default function PriceYearChart({ auctions }) {
         position: "relative",
       }}
     >
-      <Typography
-        variant="h6"
-        fontWeight="bold"
-        gutterBottom
-        textAlign="center"
-      >
+      <Typography variant="h6" fontWeight="bold" gutterBottom textAlign="center">
         Price vs. Year
       </Typography>
 
@@ -100,7 +105,7 @@ export default function PriceYearChart({ auctions }) {
               />
             </YAxis>
 
-            {/* disable built-in tooltip */}
+            {/* Disable built-in tooltip */}
             <Tooltip cursor={{ strokeDasharray: "3 3" }} content={<></>} />
 
             <Scatter
@@ -114,7 +119,7 @@ export default function PriceYearChart({ auctions }) {
           </ScatterChart>
         </ResponsiveContainer>
 
-        {/* Hover popup that you can interact with */}
+        {/* Custom hover popup */}
         <Fade in={!!hoveredCar}>
           <Paper
             onMouseEnter={() => clearTimeout(timeoutRef.current)}
@@ -122,9 +127,9 @@ export default function PriceYearChart({ auctions }) {
             elevation={6}
             sx={{
               position: "absolute",
-              left: anchorPos.x,
-              top: anchorPos.y,
-              transform: "translate(-50%, -110%)",
+              left: `${anchorPos.x}px`,
+              top: `${anchorPos.y}px`,
+              transform: "translate(-50%, 15px)", // directly under the dot
               backgroundColor: "#1E2631",
               color: "white",
               borderRadius: 2,

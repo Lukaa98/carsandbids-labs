@@ -1,4 +1,3 @@
-// scraper.js
 import puppeteer from "puppeteer-extra";
 import StealthPlugin from "puppeteer-extra-plugin-stealth";
 import fs from "fs/promises";
@@ -187,7 +186,10 @@ async function main() {
   }
 
   console.log(`✅ Found ${entries.length} entries (processing up to ${MAX_URLS}).`);
-  const toProcess = entries.slice(0, MAX_URLS).map(e => e.url);
+  let toProcess = entries.slice(0, MAX_URLS).map(e => e.url);
+
+  // NEW FIX — reverse processing order so newest gets highest ID
+  toProcess = toProcess.reverse();
 
   const results = [];
 

@@ -19,7 +19,7 @@ export default function PriceYearChart({ auctions }) {
 
   if (!auctions || auctions.length === 0) return null;
 
-  // Prepare chart data
+  // Prepare clean data for chart
   const data = auctions
     .map((a) => {
       const year = Number(a.year);
@@ -37,26 +37,18 @@ export default function PriceYearChart({ auctions }) {
     .filter(Boolean)
     .sort((a, b) => a.year - b.year);
 
-  // Hover logic — position tooltip relative to container
+  // Show popup under hovered dot
   const handleMouseMove = (dotInfo) => {
     if (dotInfo && dotInfo.payload && chartContainerRef.current) {
       clearTimeout(timeoutRef.current);
-
-      const rect = chartContainerRef.current.getBoundingClientRect();
-      const svgX = dotInfo.cx; // ✅ actual SVG X coordinate
-      const svgY = dotInfo.cy; // ✅ actual SVG Y coordinate
-
-      // Translate to container coordinate space
-      const relativeX = svgX;
-      const relativeY = svgY;
-
+      const { cx, cy } = dotInfo;
       const { year, price, label, image, url, location } = dotInfo.payload;
-      setAnchorPos({ x: relativeX, y: relativeY });
+      setAnchorPos({ x: cx, y: cy });
       setHoveredCar({ year, price, label, image, url, location });
     }
   };
 
-  // Start delay before hiding popup
+  // Hide popup with delay
   const hideWithDelay = () => {
     timeoutRef.current = setTimeout(() => setHoveredCar(null), 300);
   };
@@ -129,7 +121,7 @@ export default function PriceYearChart({ auctions }) {
               position: "absolute",
               left: `${anchorPos.x}px`,
               top: `${anchorPos.y}px`,
-              transform: "translate(-50%, 15px)", // directly under the dot
+              transform: "translate(-50%, 15px)",
               backgroundColor: "#1E2631",
               color: "white",
               borderRadius: 2,

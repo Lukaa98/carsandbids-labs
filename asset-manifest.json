@@ -1,10 +1,10 @@
 {
   "files": {
-    "main.js": "/carsandbids-labs/static/js/main.cc8a0da2.js",
+    "main.js": "/carsandbids-labs/static/js/main.b6baa82b.js",
     "index.html": "/carsandbids-labs/index.html",
-    "main.cc8a0da2.js.map": "/carsandbids-labs/static/js/main.cc8a0da2.js.map"
+    "main.b6baa82b.js.map": "/carsandbids-labs/static/js/main.b6baa82b.js.map"
   },
   "entrypoints": [
-    "static/js/main.cc8a0da2.js"
+    "static/js/main.b6baa82b.js"
   ]
 }

@@ -172,17 +172,18 @@ export default function Dashboard() {
                         sx={{
                             display: "grid",
                             gridTemplateColumns: {
-                                xs: "repeat(1, 1fr)",
-                                sm: "repeat(2, 1fr)",
-                                md: "repeat(3, 1fr)",
-                                lg: "repeat(4, 1fr)",
+                                xs: "repeat(1, 1fr)",     // Mobile
+                                sm: "repeat(2, 1fr)",     // Small screens
+                                md: "repeat(3, 1fr)",     // Medium
+                                lg: "repeat(4, 1fr)",     // Large
+                                xl: "repeat(5, 1fr)",     // Extra large = 5 per row
                             },
                             gap: 3,
                             width: "100%",
-                            maxWidth: "1600px",
+                            maxWidth: "2000px", // slightly widened container
                         }}
                     >
-                        {[...auctions].reverse().map((auction) => (
+                        {auctions.map((auction) => (
                             <AuctionCard
                                 key={auction.id || auction.auctionId}
                                 auction={auction}

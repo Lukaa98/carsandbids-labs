@@ -31,7 +31,7 @@ export async function handleAuctions(env, url) {
   const { results } = await env.DB.prepare(
     `SELECT * FROM auctionResults
      ${whereClause}
-     ORDER BY id ASC
+     ORDER BY datetime(endDate) DESC, id DESC
      LIMIT ? OFFSET ?`
   ).bind(...params, limit, offset).all();
 

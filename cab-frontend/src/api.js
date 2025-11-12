@@ -1,6 +1,8 @@
 import axios from "axios";
 
 const API_BASE = "https://backend.carsandbids-labs.workers.dev";
+// local db
+// const API_BASE = "http://127.0.0.1:8787";
 
 /**
  * Fetch paginated and filtered auctions

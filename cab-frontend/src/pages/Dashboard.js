@@ -22,15 +22,21 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [meta, setMeta] = useState({ totalPages: 1, total: 0 });
 
-    // For dropdowns
+    // Dropdown data
     const [allMakes, setAllMakes] = useState([]);
     const [allModels, setAllModels] = useState([]);
 
+    // Query params
     const pageNum = parseInt(page, 10);
     const make = searchParams.get("make") || "";
     const model = searchParams.get("model") || "";
+    const minHp = searchParams.get("minHp") || "";
+    const maxHp = searchParams.get("maxHp") || "";
 
-    // 🔹 Fetch all makes once (used for dropdown)
+    // 🔹 Generate horsepower options (100 → 1000 step 10)
+    const horsepowerOptions = Array.from({ length: 91 }, (_, i) => (i + 10) * 10);
+
+    // 🔹 Fetch all makes once
     useEffect(() => {
         (async () => {
             try {
@@ -43,7 +49,7 @@ export default function Dashboard() {
         })();
     }, []);
 
-    //  Fetch models for selected make
+    // 🔹 Fetch models for selected make
     useEffect(() => {
         if (!make) {
             setAllModels([]);
@@ -61,7 +67,7 @@ export default function Dashboard() {
         })();
     }, [make]);
 
-    // Fetch auctions whenever page/make/model changes
+    // 🔹 Fetch auctions on filter change
     useEffect(() => {
         let isMounted = true;
         (async () => {
@@ -72,6 +78,8 @@ export default function Dashboard() {
                     limit: 50,
                     make,
                     model,
+                    minHp,
+                    maxHp,
                 });
                 if (isMounted) {
                     setAuctions(data.results || []);
@@ -89,22 +97,34 @@ export default function Dashboard() {
         return () => {
             isMounted = false;
         };
-    }, [pageNum, make, model]);
+    }, [pageNum, make, model, minHp, maxHp]);
 
-    // Handle filter changes
+    // 🔹 Filter handlers
     const handleMakeChange = (e) => {
         const newMake = e.target.value;
-        setSearchParams({ make: newMake }); // reset model filter
+        setSearchParams({ make: newMake });
         navigate(`/carsandbids-labs/1?make=${encodeURIComponent(newMake)}`);
     };
 
     const handleModelChange = (e) => {
         const newModel = e.target.value;
         setSearchParams({ make, model: newModel });
+        navigate(`/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(newModel)}`);
+    };
+
+    const handleMinHpChange = (e) => {
+        const newMin = e.target.value;
+        setSearchParams({ make, model, minHp: newMin, maxHp });
         navigate(
-            `/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(
-                newModel
-            )}`
+            `/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${newMin}&maxHp=${maxHp}`
+        );
+    };
+
+    const handleMaxHpChange = (e) => {
+        const newMax = e.target.value;
+        setSearchParams({ make, model, minHp, maxHp: newMax });
+        navigate(
+            `/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${minHp}&maxHp=${newMax}`
         );
     };
 
@@ -113,11 +133,13 @@ export default function Dashboard() {
         navigate(`/carsandbids-labs/1`);
     };
 
-    // Pagination retains filters
+    // 🔹 Pagination keeps filters
     const handlePageChange = (_, value) => {
         const params = new URLSearchParams();
         if (make) params.set("make", make);
         if (model) params.set("model", model);
+        if (minHp) params.set("minHp", minHp);
+        if (maxHp) params.set("maxHp", maxHp);
         navigate(`/carsandbids-labs/${value}?${params.toString()}`);
     };
 
@@ -144,13 +166,13 @@ export default function Dashboard() {
                     maxWidth: "1200px",
                 }}
             >
-                {/* Make Filter */}
+                {/* Make */}
                 <TextField
                     select
                     label="Make"
                     value={make}
                     onChange={handleMakeChange}
-                    sx={{ minWidth: 200 }}
+                    sx={{ minWidth: 180 }}
                 >
                     <MenuItem value="">All</MenuItem>
                     {allMakes.map((m) => (
@@ -160,13 +182,13 @@ export default function Dashboard() {
                     ))}
                 </TextField>
 
-                {/* Model Filter */}
+                {/* Model */}
                 <TextField
                     select
                     label="Model"
                     value={model}
                     onChange={handleModelChange}
-                    sx={{ minWidth: 200 }}
+                    sx={{ minWidth: 180 }}
                     disabled={!make}
                 >
                     <MenuItem value="">All</MenuItem>
@@ -177,37 +199,68 @@ export default function Dashboard() {
                     ))}
                 </TextField>
 
+                {/* Min HP */}
+                <TextField
+                    select
+                    label="Min HP"
+                    value={minHp}
+                    onChange={handleMinHpChange}
+                    sx={{ minWidth: 120 }}
+                >
+                    <MenuItem value="">Any</MenuItem>
+                    {horsepowerOptions.map((hp) => (
+                        <MenuItem key={hp} value={hp}>
+                            {hp}
+                        </MenuItem>
+                    ))}
+                </TextField>
+
+                {/* Max HP */}
+                <TextField
+                    select
+                    label="Max HP"
+                    value={maxHp}
+                    onChange={handleMaxHpChange}
+                    sx={{ minWidth: 120 }}
+                >
+                    <MenuItem value="">Any</MenuItem>
+                    {horsepowerOptions.map((hp) => (
+                        <MenuItem key={hp} value={hp}>
+                            {hp}
+                        </MenuItem>
+                    ))}
+                </TextField>
+
                 <Button variant="outlined" color="secondary" onClick={handleReset}>
                     Reset Filters
                 </Button>
             </Box>
 
-            {/* Chart Between Filters and Cards */}
+            {/* Chart */}
             {!loading && make && model && auctions.length > 0 && (
                 <PriceYearChart auctions={auctions} />
             )}
 
-            {/* Loading or Results */}
+            {/* Results */}
             {loading ? (
                 <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
                     <CircularProgress color="primary" />
                 </Box>
             ) : (
                 <>
-                    {/* Auction Cards */}
                     <Box
                         sx={{
                             display: "grid",
                             gridTemplateColumns: {
-                                xs: "repeat(1, 1fr)",     // Mobile
-                                sm: "repeat(2, 1fr)",     // Small screens
-                                md: "repeat(3, 1fr)",     // Medium
-                                lg: "repeat(4, 1fr)",     // Large
-                                xl: "repeat(5, 1fr)",     // Extra large = 5 per row
+                                xs: "repeat(1, 1fr)",
+                                sm: "repeat(2, 1fr)",
+                                md: "repeat(3, 1fr)",
+                                lg: "repeat(4, 1fr)",
+                                xl: "repeat(5, 1fr)",
                             },
                             gap: 3,
                             width: "100%",
-                            maxWidth: "2000px", // slightly widened container
+                            maxWidth: "2000px",
                         }}
                     >
                         {auctions.map((auction) => (
@@ -224,7 +277,6 @@ export default function Dashboard() {
                         </Typography>
                     )}
 
-                    {/* Pagination */}
                     <Box sx={{ mt: 4 }}>
                         <Pagination
                             count={meta.totalPages}

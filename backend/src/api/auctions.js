@@ -8,10 +8,13 @@ export async function handleAuctions(env, url) {
   const make = url.searchParams.get("make");
   const model = url.searchParams.get("model");
   const year = url.searchParams.get("year");
+  const minHp = url.searchParams.get("minHp");
+  const maxHp = url.searchParams.get("maxHp");
 
-  let where = [];
+  const where = [];
   const params = [];
 
+  // --- Filters ---
   if (make) {
     where.push("LOWER(make) LIKE ?");
     params.push(`%${make.toLowerCase()}%`);
@@ -24,21 +27,33 @@ export async function handleAuctions(env, url) {
     where.push("year = ?");
     params.push(Number(year));
   }
+  if (minHp) {
+    where.push("horsepower >= ?");
+    params.push(Number(minHp));
+  }
+  if (maxHp) {
+    where.push("horsepower <= ?");
+    params.push(Number(maxHp));
+  }
 
   const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  //  Order by ID DESC to show newest → oldest
+  // --- Query results ---
   const { results } = await env.DB.prepare(
     `SELECT * FROM auctionResults
      ${whereClause}
      ORDER BY datetime(endDate) DESC, id DESC
      LIMIT ? OFFSET ?`
-  ).bind(...params, limit, offset).all();
+  )
+    .bind(...params, limit, offset)
+    .all();
 
-  // Count total for pagination
+  // --- Count total for pagination ---
   const countRow = await env.DB.prepare(
     `SELECT COUNT(*) AS count FROM auctionResults ${whereClause}`
-  ).bind(...params).first();
+  )
+    .bind(...params)
+    .first();
 
   const total = countRow?.count || 0;
   const totalPages = Math.max(1, Math.ceil(total / limit));

@@ -118,6 +118,12 @@ async function uploadResults(results) {
     try {
       const clean = sanitizeSaveLeak(item.result);
 
+      // Flatten horsepower/torque so backend sees them
+      if (clean?.vehicle?.specs) {
+        clean.horsepower = clean.vehicle.specs.horsepower ?? null;
+        clean.torque = clean.vehicle.specs.torque ?? null;
+      }
+
       const res = await fetch(BACKEND_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

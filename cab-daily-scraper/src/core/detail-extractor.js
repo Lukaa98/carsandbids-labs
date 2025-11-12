@@ -179,12 +179,25 @@ export async function enrichOne(browser, url) {
         new Set(hNodes.map((li) => norm(li.textContent)).filter(Boolean))
       );
 
+      // Combine text from body + highlights for parsing horsepower/torque
+      const bodyText = document.body.innerText || "";
+      const combinedText = [bodyText, ...highlights].join(" ");
+
+      // Extract horsepower and torque
+      const hpMatch = combinedText.match(/(\d{2,4})\s*(?:hp|horsepower)/i);
+      const tqMatch = combinedText.match(/(\d{2,4})\s*(?:lb[- ]?ft|ft[- ]?lb|torque)/i);
+
+      const horsepower = hpMatch ? Number(hpMatch[1]) : null;
+      const torque = tqMatch ? Number(tqMatch[1]) : null;
+
       return {
         title,
         specMap,
         status,
         media: { mainImageUrl, imageCount, hasVideo: !!document.querySelector("video") },
         highlights,
+        horsepower,
+        torque,
       };
     });
 
@@ -221,8 +234,8 @@ export async function enrichOne(browser, url) {
         },
         specs: {
           engine: fields.engine || null,
-          horsepower: null,
-          torque: null,
+          horsepower: rawData.horsepower || null,
+          torque: rawData.torque || null,
           drivetrain: fields.drivetrain || null,
           transmission: fields.transmission || null,
           fuelType: null,

@@ -22,11 +22,46 @@ export default function Dashboard() {
     const [loading, setLoading] = useState(true);
     const [meta, setMeta] = useState({ totalPages: 1, total: 0 });
 
+    // For dropdowns
+    const [allMakes, setAllMakes] = useState([]);
+    const [allModels, setAllModels] = useState([]);
+
     const pageNum = parseInt(page, 10);
     const make = searchParams.get("make") || "";
     const model = searchParams.get("model") || "";
 
-    // 🔹 Fetch from backend whenever page/make/model changes
+    // 🔹 Fetch all makes once (used for dropdown)
+    useEffect(() => {
+        (async () => {
+            try {
+                const data = await fetchAuctions({ page: 1, limit: 5000 });
+                const makes = [...new Set(data.results.map(a => a.make).filter(Boolean))].sort();
+                setAllMakes(makes);
+            } catch (err) {
+                console.error("Failed to fetch makes:", err);
+            }
+        })();
+    }, []);
+
+    //  Fetch models for selected make
+    useEffect(() => {
+        if (!make) {
+            setAllModels([]);
+            return;
+        }
+
+        (async () => {
+            try {
+                const data = await fetchAuctions({ page: 1, limit: 5000, make });
+                const models = [...new Set(data.results.map(a => a.model).filter(Boolean))].sort();
+                setAllModels(models);
+            } catch (err) {
+                console.error("Failed to fetch models:", err);
+            }
+        })();
+    }, [make]);
+
+    // Fetch auctions whenever page/make/model changes
     useEffect(() => {
         let isMounted = true;
         (async () => {
@@ -56,18 +91,10 @@ export default function Dashboard() {
         };
     }, [pageNum, make, model]);
 
-    // Derive unique makes/models from current page dataset
-    const makes = [...new Set(auctions.map((a) => a.make).filter(Boolean))].sort();
-    const modelsByMake = auctions
-        .filter((a) => a.make === make)
-        .map((a) => a.model)
-        .filter(Boolean);
-    const uniqueModels = [...new Set(modelsByMake)].sort();
-
-    // When filters change, update URL query + reset page to 1
+    // Handle filter changes
     const handleMakeChange = (e) => {
         const newMake = e.target.value;
-        setSearchParams({ make: newMake });
+        setSearchParams({ make: newMake }); // reset model filter
         navigate(`/carsandbids-labs/1?make=${encodeURIComponent(newMake)}`);
     };
 
@@ -126,7 +153,7 @@ export default function Dashboard() {
                     sx={{ minWidth: 200 }}
                 >
                     <MenuItem value="">All</MenuItem>
-                    {makes.map((m) => (
+                    {allMakes.map((m) => (
                         <MenuItem key={m} value={m}>
                             {m}
                         </MenuItem>
@@ -143,7 +170,7 @@ export default function Dashboard() {
                     disabled={!make}
                 >
                     <MenuItem value="">All</MenuItem>
-                    {uniqueModels.map((m) => (
+                    {allModels.map((m) => (
                         <MenuItem key={m} value={m}>
                             {m}
                         </MenuItem>

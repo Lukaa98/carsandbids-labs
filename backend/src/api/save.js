@@ -21,9 +21,10 @@ export async function handleSave(request, env) {
         sellerType, location,
         saleType, finalSalePrice, finalBidPrice, numBids, numComments, numViews, numWatchers, endDate,
         mainImageUrl, imageCount,
+        horsepower, torque,
         rawVehicle, rawStatus, rawSeller, rawMedia
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(auctionId) DO UPDATE SET
         url = excluded.url,
         title = excluded.title,
@@ -54,6 +55,8 @@ export async function handleSave(request, env) {
         endDate = excluded.endDate,
         mainImageUrl = excluded.mainImageUrl,
         imageCount = excluded.imageCount,
+        horsepower = excluded.horsepower,
+        torque = excluded.torque,
         rawVehicle = excluded.rawVehicle,
         rawStatus = excluded.rawStatus,
         rawSeller = excluded.rawSeller,
@@ -93,6 +96,9 @@ export async function handleSave(request, env) {
 
       media.mainImageUrl,
       media.imageCount,
+
+      s.horsepower,   
+      s.torque,
 
       JSON.stringify(v),
       JSON.stringify(status),

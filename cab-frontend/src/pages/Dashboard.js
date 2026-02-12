@@ -100,23 +100,27 @@ export default function Dashboard() {
     }, [pageNum, make, model, minHp, maxHp]);
 
     // 🔹 Filter handlers
+    const basePath = window.location.pathname.startsWith("/carsandbids-labs")
+        ? "/carsandbids-labs"
+        : "";
+
     const handleMakeChange = (e) => {
         const newMake = e.target.value;
         setSearchParams({ make: newMake });
-        navigate(`/carsandbids-labs/1?make=${encodeURIComponent(newMake)}`);
+        navigate(`${basePath}/1?make=${encodeURIComponent(newMake)}`);
     };
 
     const handleModelChange = (e) => {
         const newModel = e.target.value;
         setSearchParams({ make, model: newModel });
-        navigate(`/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(newModel)}`);
+        navigate(`${basePath}/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(newModel)}`);
     };
 
     const handleMinHpChange = (e) => {
         const newMin = e.target.value;
         setSearchParams({ make, model, minHp: newMin, maxHp });
         navigate(
-            `/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${newMin}&maxHp=${maxHp}`
+            `${basePath}/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${newMin}&maxHp=${maxHp}`
         );
     };
 
@@ -124,23 +128,23 @@ export default function Dashboard() {
         const newMax = e.target.value;
         setSearchParams({ make, model, minHp, maxHp: newMax });
         navigate(
-            `/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${minHp}&maxHp=${newMax}`
+            `${basePath}/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${minHp}&maxHp=${newMax}`
         );
     };
 
     const handleReset = () => {
         setSearchParams({});
-        navigate(`/carsandbids-labs/1`);
+        navigate(`${basePath}/1`);
     };
 
-    // 🔹 Pagination keeps filters
+    // Pagination keeps filters
     const handlePageChange = (_, value) => {
         const params = new URLSearchParams();
         if (make) params.set("make", make);
         if (model) params.set("model", model);
         if (minHp) params.set("minHp", minHp);
         if (maxHp) params.set("maxHp", maxHp);
-        navigate(`/carsandbids-labs/${value}?${params.toString()}`);
+        navigate(`${basePath}/${value}?${params.toString()}`);
     };
 
     return (

@@ -25,6 +25,8 @@ export default function App() {
       <CssBaseline />
       <Router>
         <Routes>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/:page" element={<Dashboard />} />
           <Route path="/carsandbids-labs" element={<Dashboard />} />
           <Route path="/carsandbids-labs/:page" element={<Dashboard />} />
         </Routes>

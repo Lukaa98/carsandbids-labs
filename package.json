@@ -1,0 +1,13 @@
+{
+  "name": "carsandbids-labs",
+  "private": true,
+  "scripts": {
+    "dev": "cd cab-frontend && npx react-scripts start",
+    "build": "cd cab-frontend && npx react-scripts build"
+  },
+  "dependencies": {
+    "@mui/material": "^7.3.7",
+    "react": "^19.2.4",
+    "react-router-dom": "^7.13.0"
+  }
+}

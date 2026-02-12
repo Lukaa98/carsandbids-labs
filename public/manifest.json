@@ -1,0 +1,15 @@
+{
+  "short_name": "C&B Labs",
+  "name": "Cars & Bids Labs Dashboard",
+  "icons": [
+    {
+      "src": "CaBLogo.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#0a0a0a",
+  "background_color": "#000000"
+}

@@ -1,6 +1,3 @@
-// detail-extractor.js
-import { normalizeFields, pickFields } from "./utils.js";
-
 export async function enrichOne(browser, url) {
   const page = await browser.newPage();
 
@@ -8,323 +5,169 @@ export async function enrichOne(browser, url) {
     console.log(`\n============================`);
     console.log(`🔍 Enriching: ${url}`);
 
-    const startTime = Date.now();
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
-    console.log(`⏳ [${elapsed(startTime)}s] DOM content loaded`);
+    await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 });
 
-    const title = await page.title();
-    console.log(`🧭 Page title: "${title}"`);
+    const auctionId = url.split("/auctions/")[1]?.split("/")[0];
 
-    // Scroll to trigger lazy hydration
-    await page.evaluate(() => window.scrollBy(0, 1000));
-    await new Promise((r) => setTimeout(r, 2000));
+    // 🥇 Try NEXT_DATA first
+    const nextData = await page.evaluate(() => {
+      const el = document.querySelector("#__NEXT_DATA__");
+      return el ? JSON.parse(el.innerText) : null;
+    });
 
-    // Wait for the quick-facts section
-    console.log(`⏳ Waiting for .quick-facts container...`);
-    const containerFound = await waitForSelectorSafe(page, ".quick-facts", 60000);
-    console.log(containerFound ? `✅ Found .quick-facts container` : `❌ .quick-facts never appeared`);
+    const auction =
+      nextData?.props?.pageProps?.auction ||
+      nextData?.props?.pageProps?.listing ||
+      null;
 
-    if (!containerFound) {
-      const snippet = await page.evaluate(() => document.body.innerText.slice(0, 400));
-      console.log("🧩 Body snippet preview:\n", snippet);
-      throw new Error("quick-facts not rendered yet (React still hydrating?)");
-    }
-
-    // Wait for data to populate
-    console.log(`⏳ Waiting for data inside .quick-facts...`);
-    const dataReady = await waitForQuickFacts(page);
-    if (dataReady) console.log(`✅ .quick-facts fully populated`);
-    else console.warn(`⚠️ quick-facts element found but seems empty`);
-
-    // --- Evaluate data inside browser context ---
-    const rawData = await page.evaluate(() => {
-      const norm = (s) => (s || "").replace(/\s+/g, " ").trim();
-
-      // Clean title extraction (remove “Save”)
-      let title = norm(
-        document.querySelector("h1")?.textContent ||
-        document.querySelector('meta[property="og:title"]')?.content ||
-        ""
-      );
-      title = title.replace(/\bSave\b/g, "").trim();
-
-      // QUICK FACTS
-      const specMap = {};
-      const qf = document.querySelector(".quick-facts");
-      if (qf) {
-        qf.querySelectorAll("dl").forEach((dl) => {
-          dl.querySelectorAll("dt").forEach((dt) => {
-            const key = norm(dt.textContent).toLowerCase();
-            const dd = dt.nextElementSibling;
-            const val = norm(dd?.textContent || "");
-            if (key && val) specMap[key] = val;
-          });
-        });
-      }
-
-      // STATUS (handles Sold vs Bid to)
-      const text = document.body.innerText;
-      const soldMatch = text.match(/Sold\s+(?:for\s+)?\$([\d,]+)/i);
-      const bidToMatch = text.match(/Bid\s*to\s*\$([\d,]+)/i);
-      const bidCountMatch = text.match(/\bBids?\b\s*(\d+)/i);
-      const commentMatch = text.match(/\bComments?\b\s*(\d+)/i);
-      const viewMatch = text.match(/\bViews?\b\s*([\d,]+)/i);
-      const watchMatch = text.match(/\bWatching\b\s*([\d,]+)/i);
-      const endMatch = text.match(/Ended\s+(.*?)\n/i);
-
-      let saleType = "Bid to";
-      let finalSalePrice = null;
-      let finalBidPrice = null;
-
-      if (soldMatch) {
-        saleType = "Sold";
-        finalSalePrice = Number(soldMatch[1].replace(/,/g, ""));
-        finalBidPrice = finalSalePrice;
-      } else if (bidToMatch) {
-        saleType = "Bid to";
-        finalBidPrice = Number(bidToMatch[1].replace(/,/g, ""));
-      }
-
-      const status = {
-        saleType,
-        finalSalePrice,
-        finalBidPrice,
-        currency: "USD",
-        endDate: endMatch ? norm(endMatch[1]) : null,
-        numBids: bidCountMatch ? Number(bidCountMatch[1]) : null,
-        numComments: commentMatch ? Number(commentMatch[1]) : null,
-        numViews: viewMatch ? Number(viewMatch[1].replace(/,/g, "")) : null,
-        numWatchers: watchMatch ? Number(watchMatch[1].replace(/,/g, "")) : null,
-      };
-
-      // MEDIA — robust extraction
-      function pickBestFromSrcset(srcset) {
-        if (!srcset) return null;
-        const parts = srcset.split(",").map((p) => p.trim()).filter(Boolean);
-        if (!parts.length) return null;
-        return parts[parts.length - 1].split(/\s+/)[0];
-      }
-
-      function absUrl(u) {
-        try {
-          return new URL(u, location.origin).toString();
-        } catch {
-          return null;
-        }
-      }
-
-      const found = new Set();
-      const imageUrls = [];
-
-      // Collect images
-      const gallerySelectors = [
-        ".photo-gallery img",
-        ".listing-media img",
-        ".gallery img",
-        "img",
-      ];
-
-      for (const sel of gallerySelectors) {
-        document.querySelectorAll(sel).forEach((img) => {
-          let url =
-            img.getAttribute("data-src") ||
-            img.getAttribute("data-original") ||
-            img.getAttribute("data-lazy") ||
-            img.getAttribute("src") ||
-            null;
-          if (!url && img.getAttribute("srcset"))
-            url = pickBestFromSrcset(img.getAttribute("srcset"));
-          if (!url && img.getAttribute("data-srcset"))
-            url = pickBestFromSrcset(img.getAttribute("data-srcset"));
-          if (url && !/cookieyes|icon|svg/i.test(url)) {
-            url = absUrl(url);
-            if (url && !found.has(url)) {
-              found.add(url);
-              imageUrls.push(url);
-            }
-          }
-        });
-        if (imageUrls.length) break;
-      }
-
-      // fallback: og:image
-      if (!imageUrls.length) {
-        const og = document.querySelector('meta[property="og:image"]')?.content;
-        if (og) {
-          const url = absUrl(og);
-          if (url && !found.has(url)) {
-            found.add(url);
-            imageUrls.push(url);
-          }
-        }
-      }
-
-      // Step 0: Directly check for the full-size main photo
-      let mainImageUrl = null;
-      const mainImgEl = document.querySelector(".preload-wrap.main.loaded img");
-      if (mainImgEl) {
-        const src = mainImgEl.getAttribute("src") || mainImgEl.getAttribute("data-src");
-        if (src && /media\.carsandbids\.com/i.test(src)) {
-          mainImageUrl = src;
-        }
-      }
-
-      const imageCount = imageUrls.length;
-
-      // HIGHLIGHTS
-      const hNodes = Array.from(
-        document.querySelectorAll(".highlights li, .Highlights li, .key-features li")
-      );
-      const highlights = Array.from(
-        new Set(hNodes.map((li) => norm(li.textContent)).filter(Boolean))
-      );
-
-      // Combine text from body + highlights for parsing horsepower/torque
-      const bodyText = document.body.innerText || "";
-      const combinedText = [bodyText, ...highlights].join(" ");
-
-      // Extract horsepower and torque
-      const hpMatch = combinedText.match(/(\d{2,4})\s*(?:hp|horsepower)/i);
-      const tqMatch = combinedText.match(/(\d{2,4})\s*(?:lb[- ]?ft|ft[- ]?lb|torque)/i);
-
-      const horsepower = hpMatch ? Number(hpMatch[1]) : null;
-      const torque = tqMatch ? Number(tqMatch[1]) : null;
+    if (auction) {
+      console.log("✅ Using NEXT_DATA extraction");
 
       return {
-        title,
-        specMap,
-        status,
-        media: { mainImageUrl, imageCount, hasVideo: !!document.querySelector("video") },
-        highlights,
-        horsepower,
-        torque,
+        auctionId,
+        url,
+        title: auction.title || null,
+        status: {
+          saleType: auction.salePrice ? "Sold" : "Bid to",
+          finalSalePrice: auction.salePrice || null,
+          finalBidPrice: auction.salePrice || null,
+          currency: "USD",
+        },
+        vehicle: {
+          year: auction.year || null,
+          make: auction.make || null,
+          model: auction.model || null,
+          body: {
+            style: auction.bodyStyle || null,
+          },
+          specs: {
+            engine: auction.engine || null,
+            transmission: auction.transmission || null,
+            drivetrain: auction.drivetrain || null,
+          },
+          mileage: {
+            value: auction.mileage || null,
+            unit: "miles",
+          },
+          vin: auction.vin || null,
+        },
+        seller: {
+          type: auction.sellerType || null,
+          location: auction.location || null,
+        },
+        metadata: {
+          scrapedAt: new Date().toISOString(),
+          source: "CarsAndBids",
+        },
+      };
+    }
+
+    // 🟡 FALLBACK — DOM parsing (robust)
+    console.log("⚠️ Falling back to DOM parsing");
+
+    const rawData = await page.evaluate(() => {
+      const text = document.body.innerText;
+
+      const extract = (label) => {
+        const regex = new RegExp(label + "\\n(.+)");
+        const match = text.match(regex);
+        return match ? match[1].trim() : null;
+      };
+
+      // 🔥 FIXED PRICE EXTRACTION
+      let price = null;
+      let saleType = "Bid to";
+
+      const nodes = Array.from(document.querySelectorAll("*"));
+
+      for (const el of nodes) {
+        const txt = el.innerText?.trim();
+        if (!txt) continue;
+
+        if (txt.startsWith("Sold for $")) {
+          const match = txt.match(/\$([\d,]+)/);
+          if (match) {
+            price = Number(match[1].replace(/,/g, ""));
+            saleType = "Sold";
+            break;
+          }
+        }
+
+        if (txt.startsWith("Bid to $")) {
+          const match = txt.match(/\$([\d,]+)/);
+          if (match) {
+            price = Number(match[1].replace(/,/g, ""));
+            saleType = "Bid to";
+            break;
+          }
+        }
+      }
+
+      return {
+        title: document.querySelector("h1")?.innerText || null,
+        make: extract("Make"),
+        model: extract("Model"),
+        engine: extract("Engine"),
+        drivetrain: extract("Drivetrain"),
+        mileage: extract("Mileage"),
+        transmission: extract("Transmission"),
+        vin: extract("VIN"),
+        bodyStyle: extract("Body Style"),
+        exteriorColor: extract("Exterior Color"),
+        interiorColor: extract("Interior Color"),
+        location: extract("Location"),
+        seller: extract("Seller"),
+        sellerType: extract("Seller Type"),
+        price,
+        saleType,
       };
     });
 
-    // --- Normalize quick-facts data ---
-    const fields = normalizeFields(pickFields(rawData.specMap));
-
-    // --- Add year from title if missing ---
-    if (!fields.year) {
-      const match = rawData.title?.match(/\b(19|20)\d{2}\b/);
-      if (match) fields.year = match[0];
-    }
-
-    // Clean up “Save” if it leaked into make/model fields
-    if (fields.make) fields.make = fields.make.replace(/\bSave\b/g, "").trim();
-    if (fields.model) fields.model = fields.model.replace(/\bSave\b/g, "").trim();
-
-    // --- Build structured result ---
-    const result = {
-      auctionId: url.split("/auctions/")[1]?.split("/")[0] || null,
+    return {
+      auctionId,
       url,
-      title: rawData.title || null,
-      status: rawData.status,
+      title: rawData.title,
+      status: {
+        saleType: rawData.saleType,
+        finalSalePrice: rawData.price,
+        finalBidPrice: rawData.price,
+        currency: "USD",
+      },
       vehicle: {
-        year: fields.year ? Number(fields.year) : null,
-        make: fields.make || null,
-        model: fields.model || null,
-        trim: fields.trim || null,
+        make: rawData.make,
+        model: rawData.model,
         body: {
-          style: fields.bodyStyle || null,
-          segment: null,
-          doors: null,
-          colorExterior: fields.exteriorColor || null,
-          colorInterior: fields.interiorColor || null,
+          style: rawData.bodyStyle,
+          colorExterior: rawData.exteriorColor,
+          colorInterior: rawData.interiorColor,
         },
         specs: {
-          engine: fields.engine || null,
-          horsepower: rawData.horsepower || null,
-          torque: rawData.torque || null,
-          drivetrain: fields.drivetrain || null,
-          transmission: fields.transmission || null,
-          fuelType: null,
-          performance: { zeroToSixty: null, topSpeedMph: null },
+          engine: rawData.engine,
+          transmission: rawData.transmission,
+          drivetrain: rawData.drivetrain,
         },
         mileage: {
-          value: fields.mileage ? Number(fields.mileage.replace(/[^0-9]/g, "")) : null,
-          unit: fields.mileage?.includes("km") ? "km" : "miles",
+          value: rawData.mileage
+            ? parseInt(rawData.mileage.replace(/,/g, ""), 10)
+            : null,
+          unit: "miles",
         },
-        vin: fields.vin || null,
-        titleStatus: fields.titleStatus || null,
+        vin: rawData.vin,
       },
       seller: {
-        type: fields.sellerType || fields.seller || null,
-        location: fields.location || null,
-      },
-      highlights: rawData.highlights || [],
-      media: {
-        mainImageUrl: rawData.media.mainImageUrl || null,
-        imageCount: rawData.media.imageCount || 0,
-        hasVideo: !!rawData.media.hasVideo,
+        type: rawData.sellerType?.replace(/\(.*?\)/g, "").trim() || rawData.seller,
+        location: rawData.location,
       },
       metadata: {
         scrapedAt: new Date().toISOString(),
         source: "CarsAndBids",
-        dataVersion: 2,
       },
     };
 
-    // --- Derive vehicle segment ---
-    const style = (result.vehicle.body.style || "").toLowerCase();
-    const mileageVal = result.vehicle.mileage.value || 0;
-    const make = (result.vehicle.make || "").toLowerCase();
-
-    if (style.includes("suv")) {
-      result.vehicle.body.segment = mileageVal > 100000 ? "Used SUV" : "Luxury SUV";
-    } else if (style.includes("convertible")) {
-      result.vehicle.body.segment = "Sports Convertible";
-    } else if (["ferrari", "porsche", "lamborghini"].includes(make)) {
-      result.vehicle.body.segment = "Exotic Sports";
-    } else {
-      result.vehicle.body.segment = "Standard Vehicle";
-    }
-
-    console.log(`✅ Extracted structured data for: ${url}`);
-    console.log(`⏱️ Total time: ${elapsed(startTime)}s`);
-    console.log(`============================\n`);
-    return result;
   } catch (e) {
     console.error(`❌ Failed to enrich ${url}:`, e.message);
-    console.log(`============================\n`);
     return { url, enriched: false, error: String(e) };
   } finally {
     await page.close();
   }
-}
-
-/**
- * Helper: Wait for selector safely, returning true/false instead of throwing
- */
-async function waitForSelectorSafe(page, selector, timeout = 30000) {
-  try {
-    await page.waitForSelector(selector, { timeout });
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * Helper: Wait until .quick-facts has ≥5 filled <dd> entries
- */
-async function waitForQuickFacts(page) {
-  for (let i = 0; i < 20; i++) {
-    const ready = await page.evaluate(() => {
-      const qf = document.querySelector(".quick-facts");
-      if (!qf) return false;
-      const dds = Array.from(qf.querySelectorAll("dd")).map((d) => d.textContent.trim());
-      return dds.filter(Boolean).length >= 5;
-    });
-    if (ready) return true;
-    await new Promise((r) => setTimeout(r, 1500));
-  }
-  return false;
-}
-
-/**
- * Helper: elapsed time formatter
- */
-function elapsed(start) {
-  return ((Date.now() - start) / 1000).toFixed(1);
 }

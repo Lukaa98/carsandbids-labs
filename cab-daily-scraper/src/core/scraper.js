@@ -204,6 +204,12 @@ async function main() {
     console.log(`\n--- (${i + 1}/${toProcess.length}) Processing ${url}`);
     try {
       let res = await enrichOne(browser, url);
+
+      if (!res || res.enriched === false) {
+        console.warn("⚠️ Skipping bad result");
+        continue;
+      }
+
       res = sanitizeSaveLeak(res);
       const item = { url, time: new Date().toISOString(), result: res };
       await appendResult(item);

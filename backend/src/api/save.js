@@ -1,5 +1,9 @@
 import { jsonResponse, errorResponse } from "../utils/responses.js";
 
+function dbValue(value) {
+  return value === undefined ? null : value;
+}
+
 export async function handleSave(request, env) {
   try {
     const body = await request.json();
@@ -62,48 +66,48 @@ export async function handleSave(request, env) {
         rawSeller = excluded.rawSeller,
         rawMedia = excluded.rawMedia
     `).bind(
-      body.auctionId,
-      body.url,
-      body.title,
+      dbValue(body.auctionId),
+      dbValue(body.url),
+      dbValue(body.title),
 
-      v.year,
-      v.make,
-      v.model,
-      v.trim,
-      b.style,
-      b.segment,
-      b.colorExterior,
-      b.colorInterior,
-      s.engine,
-      s.drivetrain,
-      s.transmission,
-      v.mileage?.value,
-      v.mileage?.unit,
-      v.vin,
-      v.titleStatus,
+      dbValue(v.year),
+      dbValue(v.make),
+      dbValue(v.model),
+      dbValue(v.trim),
+      dbValue(b.style),
+      dbValue(b.segment),
+      dbValue(b.colorExterior),
+      dbValue(b.colorInterior),
+      dbValue(s.engine),
+      dbValue(s.drivetrain),
+      dbValue(s.transmission),
+      dbValue(v.mileage?.value),
+      dbValue(v.mileage?.unit),
+      dbValue(v.vin),
+      dbValue(v.titleStatus),
 
-      seller.type,
-      seller.location,
+      dbValue(seller.type),
+      dbValue(seller.location),
 
-      status.saleType,
-      status.finalSalePrice,
-      status.finalBidPrice,
-      status.numBids,
-      status.numComments,
-      status.numViews,
-      status.numWatchers,
-      status.endDate,
+      dbValue(status.saleType),
+      dbValue(status.finalSalePrice),
+      dbValue(status.finalBidPrice),
+      dbValue(status.numBids),
+      dbValue(status.numComments),
+      dbValue(status.numViews),
+      dbValue(status.numWatchers),
+      dbValue(status.endDate),
 
-      media.mainImageUrl,
-      media.imageCount,
+      dbValue(media.mainImageUrl),
+      dbValue(media.imageCount),
 
-      s.horsepower,   
-      s.torque,
+      dbValue(s.horsepower),
+      dbValue(s.torque),
 
-      JSON.stringify(v),
-      JSON.stringify(status),
-      JSON.stringify(seller),
-      JSON.stringify(media)
+      dbValue(JSON.stringify(v)),
+      dbValue(JSON.stringify(status)),
+      dbValue(JSON.stringify(seller)),
+      dbValue(JSON.stringify(media))
     );
 
     await stmt.run();

@@ -10,6 +10,14 @@ export async function handleAuctions(env, url) {
   const year = url.searchParams.get("year");
   const minHp = url.searchParams.get("minHp");
   const maxHp = url.searchParams.get("maxHp");
+  const minPrice = url.searchParams.get("minPrice");
+  const maxPrice = url.searchParams.get("maxPrice");
+  const transmission = url.searchParams.get("transmission");
+  const drivetrain = url.searchParams.get("drivetrain");
+  const exteriorColor = url.searchParams.get("exteriorColor");
+  const interiorColor = url.searchParams.get("interiorColor");
+  const saleType = url.searchParams.get("saleType");
+  const sellerType = url.searchParams.get("sellerType");
 
   const where = [];
   const params = [];
@@ -34,6 +42,56 @@ export async function handleAuctions(env, url) {
   if (maxHp) {
     where.push("horsepower <= ?");
     params.push(Number(maxHp));
+  }
+  if (minPrice) {
+    where.push("COALESCE(finalSalePrice, finalBidPrice) >= ?");
+    params.push(Number(minPrice));
+  }
+  if (maxPrice) {
+    where.push("COALESCE(finalSalePrice, finalBidPrice) <= ?");
+    params.push(Number(maxPrice));
+  }
+  if (transmission) {
+    if (transmission.toLowerCase() === "automatic") {
+      where.push(
+        "(LOWER(transmission) LIKE ? OR LOWER(transmission) LIKE ? OR LOWER(transmission) LIKE ?)"
+      );
+      params.push("%automatic%", "%auto%", "%pdk%");
+    } else if (transmission.toLowerCase() === "manual") {
+      where.push("LOWER(transmission) LIKE ?");
+      params.push("%manual%");
+    } else {
+      where.push("LOWER(transmission) LIKE ?");
+      params.push(`%${transmission.toLowerCase()}%`);
+    }
+  }
+  if (drivetrain) {
+    where.push("LOWER(drivetrain) LIKE ?");
+    params.push(`%${drivetrain.toLowerCase()}%`);
+  }
+  if (exteriorColor) {
+    where.push("LOWER(exteriorColor) LIKE ?");
+    params.push(`%${exteriorColor.toLowerCase()}%`);
+  }
+  if (interiorColor) {
+    where.push("LOWER(interiorColor) LIKE ?");
+    params.push(`%${interiorColor.toLowerCase()}%`);
+  }
+  if (saleType) {
+    where.push("LOWER(saleType) LIKE ?");
+    params.push(`%${saleType.toLowerCase()}%`);
+  }
+  if (sellerType) {
+    if (sellerType.toLowerCase() === "private") {
+      where.push("LOWER(sellerType) LIKE ?");
+      params.push("%private%");
+    } else if (sellerType.toLowerCase() === "dealer") {
+      where.push("LOWER(sellerType) LIKE ?");
+      params.push("%dealer%");
+    } else {
+      where.push("LOWER(sellerType) LIKE ?");
+      params.push(`%${sellerType.toLowerCase()}%`);
+    }
   }
 
   const whereClause = where.length ? `WHERE ${where.join(" AND ")}` : "";

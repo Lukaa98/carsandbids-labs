@@ -16,6 +16,14 @@ export async function fetchAuctions({
     year = "",
     minHp = "",
     maxHp = "",
+    minPrice = "",
+    maxPrice = "",
+    transmission = "",
+    drivetrain = "",
+    exteriorColor = "",
+    interiorColor = "",
+    saleType = "",
+    sellerType = "",
 }) {
     const params = {};
     if (page) params.page = page;
@@ -25,6 +33,14 @@ export async function fetchAuctions({
     if (year) params.year = year;
     if (minHp) params.minHp = minHp;
     if (maxHp) params.maxHp = maxHp;
+    if (minPrice) params.minPrice = minPrice;
+    if (maxPrice) params.maxPrice = maxPrice;
+    if (transmission) params.transmission = transmission;
+    if (drivetrain) params.drivetrain = drivetrain;
+    if (exteriorColor) params.exteriorColor = exteriorColor;
+    if (interiorColor) params.interiorColor = interiorColor;
+    if (saleType) params.saleType = saleType;
+    if (sellerType) params.sellerType = sellerType;
 
     const response = await axios.get(`${API_BASE}/auctions`, { params });
     return response.data;

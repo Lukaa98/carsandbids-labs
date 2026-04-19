@@ -1,293 +1,390 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
-    Box,
-    CircularProgress,
-    TextField,
-    MenuItem,
-    Pagination,
-    Button,
-    Typography,
+  Box,
+  CircularProgress,
+  TextField,
+  MenuItem,
+  Pagination,
+  Button,
+  Typography,
 } from "@mui/material";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { fetchAuctions } from "../api";
 import AuctionCard from "../components/AuctionCard";
 import PriceYearChart from "../components/PriceYearChart";
 
+const FILTER_KEYS = [
+  "make",
+  "model",
+  "minHp",
+  "maxHp",
+  "minPrice",
+  "maxPrice",
+  "transmission",
+  "drivetrain",
+  "exteriorColor",
+  "interiorColor",
+  "saleType",
+  "sellerType",
+];
+
+function uniqueValues(items, key) {
+  return [...new Set(items.map((item) => item[key]).filter(Boolean))].sort();
+}
+
 export default function Dashboard() {
-    const { page = "1" } = useParams();
-    const [searchParams, setSearchParams] = useSearchParams();
-    const navigate = useNavigate();
+  const { page = "1" } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-    const [auctions, setAuctions] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [meta, setMeta] = useState({ totalPages: 1, total: 0 });
+  const [auctions, setAuctions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState({ totalPages: 1, total: 0 });
+  const [allAuctions, setAllAuctions] = useState([]);
 
-    // Dropdown data
-    const [allMakes, setAllMakes] = useState([]);
-    const [allModels, setAllModels] = useState([]);
+  const pageNum = parseInt(page, 10);
 
-    // Query params
-    const pageNum = parseInt(page, 10);
-    const make = searchParams.get("make") || "";
-    const model = searchParams.get("model") || "";
-    const minHp = searchParams.get("minHp") || "";
-    const maxHp = searchParams.get("maxHp") || "";
+  const filters = useMemo(
+    () =>
+      FILTER_KEYS.reduce((acc, key) => {
+        acc[key] = searchParams.get(key) || "";
+        return acc;
+      }, {}),
+    [searchParams]
+  );
 
-    // 🔹 Generate horsepower options (100 → 1000 step 10)
-    const horsepowerOptions = Array.from({ length: 91 }, (_, i) => (i + 10) * 10);
+  const horsepowerOptions = Array.from({ length: 91 }, (_, i) => (i + 10) * 10);
+  const priceOptions = Array.from({ length: 41 }, (_, i) => i * 5000).filter(
+    (value) => value > 0
+  );
 
-    // 🔹 Fetch all makes once
-    useEffect(() => {
-        (async () => {
-            try {
-                const data = await fetchAuctions({ page: 1, limit: 5000 });
-                const makes = [...new Set(data.results.map(a => a.make).filter(Boolean))].sort();
-                setAllMakes(makes);
-            } catch (err) {
-                console.error("Failed to fetch makes:", err);
-            }
-        })();
-    }, []);
+  const allMakes = useMemo(() => uniqueValues(allAuctions, "make"), [allAuctions]);
+  const allModels = useMemo(() => {
+    const scoped = filters.make
+      ? allAuctions.filter((auction) => auction.make === filters.make)
+      : allAuctions;
+    return uniqueValues(scoped, "model");
+  }, [allAuctions, filters.make]);
+  const drivetrainOptions = useMemo(
+    () => uniqueValues(allAuctions, "drivetrain"),
+    [allAuctions]
+  );
+  const saleTypeOptions = useMemo(
+    () => uniqueValues(allAuctions, "saleType"),
+    [allAuctions]
+  );
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await fetchAuctions({ page: 1, limit: 5000 });
+        setAllAuctions(data.results || []);
+      } catch (err) {
+        console.error("Failed to fetch filter options:", err);
+      }
+    })();
+  }, []);
 
-    // 🔹 Fetch models for selected make
-    useEffect(() => {
-        if (!make) {
-            setAllModels([]);
-            return;
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        setLoading(true);
+        const data = await fetchAuctions({
+          page: pageNum,
+          limit: 50,
+          ...filters,
+        });
+        if (isMounted) {
+          setAuctions(data.results || []);
+          setMeta({
+            totalPages: data.totalPages || 1,
+            total: data.total || 0,
+          });
         }
-
-        (async () => {
-            try {
-                const data = await fetchAuctions({ page: 1, limit: 5000, make });
-                const models = [...new Set(data.results.map(a => a.model).filter(Boolean))].sort();
-                setAllModels(models);
-            } catch (err) {
-                console.error("Failed to fetch models:", err);
-            }
-        })();
-    }, [make]);
-
-    // 🔹 Fetch auctions on filter change
-    useEffect(() => {
-        let isMounted = true;
-        (async () => {
-            try {
-                setLoading(true);
-                const data = await fetchAuctions({
-                    page: pageNum,
-                    limit: 50,
-                    make,
-                    model,
-                    minHp,
-                    maxHp,
-                });
-                if (isMounted) {
-                    setAuctions(data.results || []);
-                    setMeta({
-                        totalPages: data.totalPages || 1,
-                        total: data.total || 0,
-                    });
-                }
-            } catch (err) {
-                console.error("Failed to fetch auctions:", err);
-            } finally {
-                if (isMounted) setLoading(false);
-            }
-        })();
-        return () => {
-            isMounted = false;
-        };
-    }, [pageNum, make, model, minHp, maxHp]);
-
-    // 🔹 Filter handlers
-    const handleMakeChange = (e) => {
-        const newMake = e.target.value;
-        setSearchParams({ make: newMake });
-        navigate(`/carsandbids-labs/1?make=${encodeURIComponent(newMake)}`);
+      } catch (err) {
+        console.error("Failed to fetch auctions:", err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    })();
+    return () => {
+      isMounted = false;
     };
+  }, [pageNum, filters]);
 
-    const handleModelChange = (e) => {
-        const newModel = e.target.value;
-        setSearchParams({ make, model: newModel });
-        navigate(`/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(newModel)}`);
-    };
+  const pushFilters = (nextFilters) => {
+    const params = new URLSearchParams();
+    FILTER_KEYS.forEach((key) => {
+      if (nextFilters[key]) {
+        params.set(key, nextFilters[key]);
+      }
+    });
 
-    const handleMinHpChange = (e) => {
-        const newMin = e.target.value;
-        setSearchParams({ make, model, minHp: newMin, maxHp });
-        navigate(
-            `/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${newMin}&maxHp=${maxHp}`
-        );
-    };
+    setSearchParams(params);
+    const query = params.toString();
+    navigate(`/carsandbids-labs/1${query ? `?${query}` : ""}`);
+  };
 
-    const handleMaxHpChange = (e) => {
-        const newMax = e.target.value;
-        setSearchParams({ make, model, minHp, maxHp: newMax });
-        navigate(
-            `/carsandbids-labs/1?make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}&minHp=${minHp}&maxHp=${newMax}`
-        );
-    };
+  const handleFilterChange = (key) => (event) => {
+    const value = event.target.value;
+    const nextFilters = { ...filters, [key]: value };
 
-    const handleReset = () => {
-        setSearchParams({});
-        navigate(`/carsandbids-labs/1`);
-    };
+    if (key === "make") {
+      nextFilters.model = "";
+    }
+    pushFilters(nextFilters);
+  };
 
-    // 🔹 Pagination keeps filters
-    const handlePageChange = (_, value) => {
-        const params = new URLSearchParams();
-        if (make) params.set("make", make);
-        if (model) params.set("model", model);
-        if (minHp) params.set("minHp", minHp);
-        if (maxHp) params.set("maxHp", maxHp);
-        navigate(`/carsandbids-labs/${value}?${params.toString()}`);
-    };
+  const handleReset = () => {
+    setSearchParams({});
+    navigate(`/carsandbids-labs/1`);
+  };
 
-    return (
-        <Box
-            sx={{
-                p: 4,
-                backgroundColor: "background.default",
-                minHeight: "100vh",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-            }}
+  const handlePageChange = (_, value) => {
+    const params = new URLSearchParams();
+    FILTER_KEYS.forEach((key) => {
+      if (filters[key]) {
+        params.set(key, filters[key]);
+      }
+    });
+    const query = params.toString();
+    navigate(`/carsandbids-labs/${value}${query ? `?${query}` : ""}`);
+  };
+
+  return (
+    <Box
+      sx={{
+        p: 4,
+        backgroundColor: "background.default",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: {
+            xs: "repeat(1, 1fr)",
+            sm: "repeat(2, 1fr)",
+            lg: "repeat(4, 1fr)",
+          },
+          gap: 2,
+          mb: 2,
+          width: "100%",
+          maxWidth: "1400px",
+        }}
+      >
+        <TextField
+          select
+          label="Make"
+          value={filters.make}
+          onChange={handleFilterChange("make")}
         >
-            {/* 🔹 Filters */}
-            <Box
-                sx={{
-                    display: "flex",
-                    gap: 2,
-                    mb: 2,
-                    justifyContent: "center",
-                    flexWrap: "wrap",
-                    width: "100%",
-                    maxWidth: "1200px",
-                }}
-            >
-                {/* Make */}
-                <TextField
-                    select
-                    label="Make"
-                    value={make}
-                    onChange={handleMakeChange}
-                    sx={{ minWidth: 180 }}
-                >
-                    <MenuItem value="">All</MenuItem>
-                    {allMakes.map((m) => (
-                        <MenuItem key={m} value={m}>
-                            {m}
-                        </MenuItem>
-                    ))}
-                </TextField>
+          <MenuItem value="">All</MenuItem>
+          {allMakes.map((make) => (
+            <MenuItem key={make} value={make}>
+              {make}
+            </MenuItem>
+          ))}
+        </TextField>
 
-                {/* Model */}
-                <TextField
-                    select
-                    label="Model"
-                    value={model}
-                    onChange={handleModelChange}
-                    sx={{ minWidth: 180 }}
-                    disabled={!make}
-                >
-                    <MenuItem value="">All</MenuItem>
-                    {allModels.map((m) => (
-                        <MenuItem key={m} value={m}>
-                            {m}
-                        </MenuItem>
-                    ))}
-                </TextField>
+        <TextField
+          select
+          label="Model"
+          value={filters.model}
+          onChange={handleFilterChange("model")}
+          disabled={!filters.make}
+        >
+          <MenuItem value="">All</MenuItem>
+          {allModels.map((model) => (
+            <MenuItem key={model} value={model}>
+              {model}
+            </MenuItem>
+          ))}
+        </TextField>
 
-                {/* Min HP */}
-                <TextField
-                    select
-                    label="Min HP"
-                    value={minHp}
-                    onChange={handleMinHpChange}
-                    sx={{ minWidth: 120 }}
-                >
-                    <MenuItem value="">Any</MenuItem>
-                    {horsepowerOptions.map((hp) => (
-                        <MenuItem key={hp} value={hp}>
-                            {hp}
-                        </MenuItem>
-                    ))}
-                </TextField>
+        <TextField
+          select
+          label="Transmission"
+          value={filters.transmission}
+          onChange={handleFilterChange("transmission")}
+        >
+          <MenuItem value="">All</MenuItem>
+          <MenuItem value="Automatic">Automatic</MenuItem>
+          <MenuItem value="Manual">Manual</MenuItem>
+        </TextField>
 
-                {/* Max HP */}
-                <TextField
-                    select
-                    label="Max HP"
-                    value={maxHp}
-                    onChange={handleMaxHpChange}
-                    sx={{ minWidth: 120 }}
-                >
-                    <MenuItem value="">Any</MenuItem>
-                    {horsepowerOptions.map((hp) => (
-                        <MenuItem key={hp} value={hp}>
-                            {hp}
-                        </MenuItem>
-                    ))}
-                </TextField>
+        <TextField
+          select
+          label="Drivetrain"
+          value={filters.drivetrain}
+          onChange={handleFilterChange("drivetrain")}
+        >
+          <MenuItem value="">All</MenuItem>
+          {drivetrainOptions.map((drivetrain) => (
+            <MenuItem key={drivetrain} value={drivetrain}>
+              {drivetrain}
+            </MenuItem>
+          ))}
+        </TextField>
 
-                <Button variant="outlined" color="secondary" onClick={handleReset}>
-                    Reset Filters
-                </Button>
-            </Box>
+        <TextField
+          select
+          label="Min HP"
+          value={filters.minHp}
+          onChange={handleFilterChange("minHp")}
+        >
+          <MenuItem value="">Any</MenuItem>
+          {horsepowerOptions.map((hp) => (
+            <MenuItem key={hp} value={hp}>
+              {hp}
+            </MenuItem>
+          ))}
+        </TextField>
 
-            {/* Chart */}
-            {!loading && make && model && auctions.length > 0 && (
-                <PriceYearChart auctions={auctions} />
-            )}
+        <TextField
+          select
+          label="Max HP"
+          value={filters.maxHp}
+          onChange={handleFilterChange("maxHp")}
+        >
+          <MenuItem value="">Any</MenuItem>
+          {horsepowerOptions.map((hp) => (
+            <MenuItem key={hp} value={hp}>
+              {hp}
+            </MenuItem>
+          ))}
+        </TextField>
 
-            {/* Results */}
-            {loading ? (
-                <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
-                    <CircularProgress color="primary" />
-                </Box>
-            ) : (
-                <>
-                    <Box
-                        sx={{
-                            display: "grid",
-                            gridTemplateColumns: {
-                                xs: "repeat(1, 1fr)",
-                                sm: "repeat(2, 1fr)",
-                                md: "repeat(3, 1fr)",
-                                lg: "repeat(4, 1fr)",
-                                xl: "repeat(5, 1fr)",
-                            },
-                            gap: 3,
-                            width: "100%",
-                            maxWidth: "2000px",
-                        }}
-                    >
-                        {auctions.map((auction) => (
-                            <AuctionCard
-                                key={auction.id || auction.auctionId}
-                                auction={auction}
-                            />
-                        ))}
-                    </Box>
+        <TextField
+          select
+          label="Min Price"
+          value={filters.minPrice}
+          onChange={handleFilterChange("minPrice")}
+        >
+          <MenuItem value="">Any</MenuItem>
+          {priceOptions.map((price) => (
+            <MenuItem key={price} value={price}>
+              ${price.toLocaleString()}
+            </MenuItem>
+          ))}
+        </TextField>
 
-                    {!loading && auctions.length === 0 && (
-                        <Typography variant="h6" color="text.secondary" sx={{ mt: 6 }}>
-                            No auctions found for this filter.
-                        </Typography>
-                    )}
+        <TextField
+          select
+          label="Max Price"
+          value={filters.maxPrice}
+          onChange={handleFilterChange("maxPrice")}
+        >
+          <MenuItem value="">Any</MenuItem>
+          {priceOptions.map((price) => (
+            <MenuItem key={price} value={price}>
+              ${price.toLocaleString()}
+            </MenuItem>
+          ))}
+        </TextField>
 
-                    <Box sx={{ mt: 4 }}>
-                        <Pagination
-                            count={meta.totalPages}
-                            page={pageNum}
-                            onChange={handlePageChange}
-                            color="primary"
-                            size="large"
-                        />
-                    </Box>
-                </>
-            )}
+        <TextField
+          label="Exterior Color"
+          value={filters.exteriorColor}
+          onChange={handleFilterChange("exteriorColor")}
+          placeholder="Black, Blue, Red..."
+        />
+
+        <TextField
+          label="Interior Color"
+          value={filters.interiorColor}
+          onChange={handleFilterChange("interiorColor")}
+          placeholder="Black, Tan, White..."
+        />
+
+        <TextField
+          select
+          label="Sale Type"
+          value={filters.saleType}
+          onChange={handleFilterChange("saleType")}
+        >
+          <MenuItem value="">All</MenuItem>
+          {saleTypeOptions.map((saleType) => (
+            <MenuItem key={saleType} value={saleType}>
+              {saleType}
+            </MenuItem>
+          ))}
+        </TextField>
+
+        <TextField
+          select
+          label="Seller Type"
+          value={filters.sellerType}
+          onChange={handleFilterChange("sellerType")}
+        >
+          <MenuItem value="">All</MenuItem>
+          <MenuItem value="Private">Private</MenuItem>
+          <MenuItem value="Dealer">Dealer</MenuItem>
+        </TextField>
+      </Box>
+
+      <Box sx={{ width: "100%", maxWidth: "1400px", mb: 3, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 2, flexWrap: "wrap" }}>
+        <Typography variant="body1" color="text.secondary">
+          {loading ? "Loading auctions..." : `${meta.total} auctions found`}
+        </Typography>
+        <Button variant="outlined" color="secondary" onClick={handleReset}>
+          Reset Filters
+        </Button>
+      </Box>
+
+      {!loading && filters.make && filters.model && auctions.length > 0 && (
+        <PriceYearChart auctions={auctions} />
+      )}
+
+      {loading ? (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+          <CircularProgress color="primary" />
         </Box>
-    );
+      ) : (
+        <>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(1, 1fr)",
+                sm: "repeat(2, 1fr)",
+                md: "repeat(3, 1fr)",
+                lg: "repeat(4, 1fr)",
+                xl: "repeat(5, 1fr)",
+              },
+              gap: 3,
+              width: "100%",
+              maxWidth: "2000px",
+            }}
+          >
+            {auctions.map((auction) => (
+              <AuctionCard
+                key={auction.id || auction.auctionId}
+                auction={auction}
+              />
+            ))}
+          </Box>
+
+          {!loading && auctions.length === 0 && (
+            <Typography variant="h6" color="text.secondary" sx={{ mt: 6 }}>
+              No auctions found for this filter.
+            </Typography>
+          )}
+
+          <Box sx={{ mt: 4 }}>
+            <Pagination
+              count={meta.totalPages}
+              page={pageNum}
+              onChange={handlePageChange}
+              color="primary"
+              size="large"
+            />
+          </Box>
+        </>
+      )}
+    </Box>
+  );
 }

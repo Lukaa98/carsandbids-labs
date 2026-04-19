@@ -8,12 +8,15 @@ export async function handleAuctions(env, url) {
   const make = url.searchParams.get("make");
   const model = url.searchParams.get("model");
   const year = url.searchParams.get("year");
+  const minYear = url.searchParams.get("minYear");
+  const maxYear = url.searchParams.get("maxYear");
   const minHp = url.searchParams.get("minHp");
   const maxHp = url.searchParams.get("maxHp");
   const minPrice = url.searchParams.get("minPrice");
   const maxPrice = url.searchParams.get("maxPrice");
   const transmission = url.searchParams.get("transmission");
   const drivetrain = url.searchParams.get("drivetrain");
+  const bodyStyle = url.searchParams.get("bodyStyle");
   const exteriorColor = url.searchParams.get("exteriorColor");
   const interiorColor = url.searchParams.get("interiorColor");
   const saleType = url.searchParams.get("saleType");
@@ -34,6 +37,14 @@ export async function handleAuctions(env, url) {
   if (year) {
     where.push("year = ?");
     params.push(Number(year));
+  }
+  if (minYear) {
+    where.push("year >= ?");
+    params.push(Number(minYear));
+  }
+  if (maxYear) {
+    where.push("year <= ?");
+    params.push(Number(maxYear));
   }
   if (minHp) {
     where.push("horsepower >= ?");
@@ -68,6 +79,10 @@ export async function handleAuctions(env, url) {
   if (drivetrain) {
     where.push("LOWER(drivetrain) LIKE ?");
     params.push(`%${drivetrain.toLowerCase()}%`);
+  }
+  if (bodyStyle) {
+    where.push("LOWER(bodyStyle) LIKE ?");
+    params.push(`%${bodyStyle.toLowerCase()}%`);
   }
   if (exteriorColor) {
     where.push("LOWER(exteriorColor) LIKE ?");

@@ -7,7 +7,9 @@ import {
   Pagination,
   Button,
   Typography,
+  Menu,
 } from "@mui/material";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { fetchAuctions } from "../api";
 import AuctionCard from "../components/AuctionCard";
@@ -16,12 +18,15 @@ import PriceYearChart from "../components/PriceYearChart";
 const FILTER_KEYS = [
   "make",
   "model",
+  "minYear",
+  "maxYear",
   "minHp",
   "maxHp",
   "minPrice",
   "maxPrice",
   "transmission",
   "drivetrain",
+  "bodyStyle",
   "exteriorColor",
   "interiorColor",
   "saleType",
@@ -30,6 +35,83 @@ const FILTER_KEYS = [
 
 function uniqueValues(items, key) {
   return [...new Set(items.map((item) => item[key]).filter(Boolean))].sort();
+}
+
+function RangeMenuFilter({
+  label,
+  minValue,
+  maxValue,
+  minLabel,
+  maxLabel,
+  options,
+  onChange,
+}) {
+  const [anchorEl, setAnchorEl] = useState(null);
+
+  return (
+    <>
+      <Button
+        variant="outlined"
+        color="inherit"
+        endIcon={<ArrowDropDownIcon />}
+        onClick={(event) => setAnchorEl(event.currentTarget)}
+        sx={{
+          justifyContent: "space-between",
+          minWidth: 180,
+          height: 56,
+          borderColor: "rgba(255,255,255,0.23)",
+          color: "text.primary",
+          textTransform: "none",
+          px: 2,
+        }}
+      >
+        {label}
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+        transformOrigin={{ vertical: "top", horizontal: "left" }}
+      >
+        <Box sx={{ p: 2.5, display: "flex", alignItems: "center", gap: 1.5 }}>
+          <TextField
+            select
+            size="small"
+            label={minLabel}
+            value={minValue}
+            onChange={(event) => onChange("min", event.target.value)}
+            sx={{ minWidth: 110 }}
+          >
+            <MenuItem value="">Any</MenuItem>
+            {options.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Typography variant="body2" color="text.secondary">
+            To
+          </Typography>
+          <TextField
+            select
+            size="small"
+            label={maxLabel}
+            value={maxValue}
+            onChange={(event) => onChange("max", event.target.value)}
+            sx={{ minWidth: 110 }}
+          >
+            <MenuItem value="">Any</MenuItem>
+            {options.map((option) => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+        </Box>
+      </Menu>
+    </>
+  );
 }
 
 export default function Dashboard() {
@@ -57,6 +139,26 @@ export default function Dashboard() {
   const priceOptions = Array.from({ length: 41 }, (_, i) => i * 5000).filter(
     (value) => value > 0
   );
+  const yearOptions = useMemo(
+    () =>
+      uniqueValues(allAuctions, "year")
+        .map((year) => Number(year))
+        .filter((year) => Number.isFinite(year))
+        .sort((a, b) => b - a),
+    [allAuctions]
+  );
+  const yearMenuOptions = useMemo(
+    () => yearOptions.map((year) => ({ value: String(year), label: String(year) })),
+    [yearOptions]
+  );
+  const priceMenuOptions = useMemo(
+    () =>
+      priceOptions.map((price) => ({
+        value: String(price),
+        label: `$${price.toLocaleString()}`,
+      })),
+    [priceOptions]
+  );
 
   const allMakes = useMemo(() => uniqueValues(allAuctions, "make"), [allAuctions]);
   const allModels = useMemo(() => {
@@ -67,6 +169,10 @@ export default function Dashboard() {
   }, [allAuctions, filters.make]);
   const drivetrainOptions = useMemo(
     () => uniqueValues(allAuctions, "drivetrain"),
+    [allAuctions]
+  );
+  const bodyStyleOptions = useMemo(
+    () => uniqueValues(allAuctions, "bodyStyle"),
     [allAuctions]
   );
   const saleTypeOptions = useMemo(
@@ -133,6 +239,13 @@ export default function Dashboard() {
       nextFilters.model = "";
     }
     pushFilters(nextFilters);
+  };
+
+  const handleRangeFilterChange = (minKey, maxKey) => (bound, value) => {
+    pushFilters({
+      ...filters,
+      [bound === "min" ? minKey : maxKey]: value,
+    });
   };
 
   const handleReset = () => {
@@ -230,58 +343,49 @@ export default function Dashboard() {
           ))}
         </TextField>
 
-        <TextField
-          select
-          label="Min HP"
-          value={filters.minHp}
-          onChange={handleFilterChange("minHp")}
-        >
-          <MenuItem value="">Any</MenuItem>
-          {horsepowerOptions.map((hp) => (
-            <MenuItem key={hp} value={hp}>
-              {hp}
-            </MenuItem>
-          ))}
-        </TextField>
+        <RangeMenuFilter
+          label="Years"
+          minValue={filters.minYear}
+          maxValue={filters.maxYear}
+          minLabel="Min"
+          maxLabel="Max"
+          options={yearMenuOptions}
+          onChange={handleRangeFilterChange("minYear", "maxYear")}
+        />
+
+        <RangeMenuFilter
+          label="Horsepower"
+          minValue={filters.minHp}
+          maxValue={filters.maxHp}
+          minLabel="Min"
+          maxLabel="Max"
+          options={horsepowerOptions.map((hp) => ({
+            value: String(hp),
+            label: String(hp),
+          }))}
+          onChange={handleRangeFilterChange("minHp", "maxHp")}
+        />
+
+        <RangeMenuFilter
+          label="Price"
+          minValue={filters.minPrice}
+          maxValue={filters.maxPrice}
+          minLabel="Min"
+          maxLabel="Max"
+          options={priceMenuOptions}
+          onChange={handleRangeFilterChange("minPrice", "maxPrice")}
+        />
 
         <TextField
           select
-          label="Max HP"
-          value={filters.maxHp}
-          onChange={handleFilterChange("maxHp")}
+          label="Body Style"
+          value={filters.bodyStyle}
+          onChange={handleFilterChange("bodyStyle")}
         >
-          <MenuItem value="">Any</MenuItem>
-          {horsepowerOptions.map((hp) => (
-            <MenuItem key={hp} value={hp}>
-              {hp}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          label="Min Price"
-          value={filters.minPrice}
-          onChange={handleFilterChange("minPrice")}
-        >
-          <MenuItem value="">Any</MenuItem>
-          {priceOptions.map((price) => (
-            <MenuItem key={price} value={price}>
-              ${price.toLocaleString()}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <TextField
-          select
-          label="Max Price"
-          value={filters.maxPrice}
-          onChange={handleFilterChange("maxPrice")}
-        >
-          <MenuItem value="">Any</MenuItem>
-          {priceOptions.map((price) => (
-            <MenuItem key={price} value={price}>
-              ${price.toLocaleString()}
+          <MenuItem value="">All</MenuItem>
+          {bodyStyleOptions.map((bodyStyle) => (
+            <MenuItem key={bodyStyle} value={bodyStyle}>
+              {bodyStyle}
             </MenuItem>
           ))}
         </TextField>

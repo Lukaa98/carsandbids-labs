@@ -14,11 +14,15 @@ import {
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PriceYearChart from "./PriceYearChart";
-import { fetchAuctions } from "../api";
+import PriceMileageChart from "./PriceMileageChart";
+import CompSummaryCards from "./CompSummaryCards";
+import { fetchCompAnalytics } from "../api";
 
 export default function AuctionCard({ auction }) {
     const [open, setOpen] = useState(false);
     const [relatedAuctions, setRelatedAuctions] = useState([]);
+    const [compSummary, setCompSummary] = useState(null);
+    const [compInsights, setCompInsights] = useState([]);
     const [loadingChart, setLoadingChart] = useState(false);
 
     // Determine display label and amount
@@ -35,21 +39,37 @@ export default function AuctionCard({ auction }) {
             (async () => {
                 try {
                     setLoadingChart(true);
-                    const data = await fetchAuctions({
-                        page: 1,
-                        limit: 100,
+                    const data = await fetchCompAnalytics({
+                        auctionId: auction.auctionId,
                         make: auction.make,
                         model: auction.model,
+                        year: auction.year,
+                        mileage: auction.mileage,
+                        finalSalePrice: auction.finalSalePrice,
+                        finalBidPrice: auction.finalBidPrice,
+                        yearWindow: 3,
+                        limit: 150,
                     });
                     setRelatedAuctions(data.results || []);
+                    setCompSummary(data.summary || null);
+                    setCompInsights(data.insights || []);
                 } catch (err) {
-                    console.error("Failed to fetch related auctions:", err);
+                    console.error("Failed to fetch comp analytics:", err);
                 } finally {
                     setLoadingChart(false);
                 }
             })();
         }
-    }, [open, auction.make, auction.model]);
+    }, [
+        open,
+        auction.auctionId,
+        auction.make,
+        auction.model,
+        auction.year,
+        auction.mileage,
+        auction.finalSalePrice,
+        auction.finalBidPrice,
+    ]);
 
     return (
         <>
@@ -193,8 +213,7 @@ export default function AuctionCard({ auction }) {
                                             ? `$${auction.finalBidPrice.toLocaleString()}`
                                             : "—"}
                                     <br />
-                                    Bids: {auction.numBids || 0} · Comments:{" "}
-                                    {auction.numComments || 0}
+                                    Bids: {auction.numBids || 0} · Comments: {auction.numComments || 0}
                                     <br />
                                     Views: {auction.numViews || 0}
                                 </Typography>
@@ -203,7 +222,47 @@ export default function AuctionCard({ auction }) {
 
                         <Divider sx={{ my: 2 }} />
 
-                        {/* 🔹 Related Price-Year Chart */}
+                        <Box sx={{ my: 1 }}>
+                            <Typography
+                                variant="subtitle1"
+                                fontWeight="bold"
+                                gutterBottom
+                                textAlign="center"
+                            >
+                                Comparable Sales Summary
+                            </Typography>
+                            {loadingChart ? (
+                                <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                                    <CircularProgress color="primary" size={32} />
+                                </Box>
+                            ) : (
+                                <CompSummaryCards summary={compSummary} />
+                            )}
+                        </Box>
+
+                        {compInsights.length > 0 && (
+                            <>
+                                <Divider sx={{ my: 2 }} />
+                                <Box>
+                                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                        This Listing vs. Comps
+                                    </Typography>
+                                    {compInsights.map((insight) => (
+                                        <Typography
+                                            key={insight}
+                                            variant="body2"
+                                            color="text.secondary"
+                                            sx={{ mb: 0.75 }}
+                                        >
+                                            • {insight}
+                                        </Typography>
+                                    ))}
+                                </Box>
+                            </>
+                        )}
+
+                        <Divider sx={{ my: 2 }} />
+
                         <Box sx={{ textAlign: "center", my: 2 }}>
                             <Typography
                                 variant="subtitle1"
@@ -222,6 +281,22 @@ export default function AuctionCard({ auction }) {
                                 </Typography>
                             )}
                         </Box>
+
+                        {!loadingChart && relatedAuctions.length > 0 && (
+                            <>
+                                <Divider sx={{ my: 2 }} />
+                                <Box sx={{ textAlign: "center", my: 2 }}>
+                                    <Typography
+                                        variant="subtitle1"
+                                        color="text.secondary"
+                                        gutterBottom
+                                    >
+                                        {auction.make} {auction.model} — Price vs. Mileage
+                                    </Typography>
+                                    <PriceMileageChart auctions={relatedAuctions} />
+                                </Box>
+                            </>
+                        )}
 
                         <Divider sx={{ my: 2 }} />
 

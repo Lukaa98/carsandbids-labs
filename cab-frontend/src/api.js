@@ -51,3 +51,29 @@ export async function fetchAuctions({
     const response = await axios.get(`${API_BASE}/auctions`, { params });
     return response.data;
 }
+
+export async function fetchCompAnalytics({
+    auctionId = "",
+    make = "",
+    model = "",
+    year = "",
+    mileage = "",
+    finalSalePrice = "",
+    finalBidPrice = "",
+    yearWindow = 3,
+    limit = 150,
+}) {
+    const params = {};
+    if (auctionId) params.auctionId = auctionId;
+    if (make) params.make = make;
+    if (model) params.model = model;
+    if (year) params.year = year;
+    if (mileage) params.mileage = mileage;
+    if (finalSalePrice) params.finalSalePrice = finalSalePrice;
+    if (finalBidPrice) params.finalBidPrice = finalBidPrice;
+    if (yearWindow) params.yearWindow = yearWindow;
+    if (limit) params.limit = limit;
+
+    const response = await axios.get(`${API_BASE}/analytics/comps`, { params });
+    return response.data;
+}

@@ -1,4 +1,5 @@
 import { handleAuctions } from "./api/auctions.js";
+import { handleCompAnalytics } from "./api/analytics.js";
 import { handleSave } from "./api/save.js";
 import { handleOptions } from "./utils/cors.js";
 
@@ -16,6 +17,10 @@ export default {
       return handleAuctions(env, url);
     }
 
+    // GET /analytics/comps → returns analytics of the auction
+    if (request.method === "GET" && url.pathname === "/analytics/comps") {
+      return handleCompAnalytics(env, url);
+    }
     // POST /save → insert one row
     if (request.method === "POST" && url.pathname === "/save") {
       return handleSave(request, env);

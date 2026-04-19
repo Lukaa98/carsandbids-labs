@@ -15,6 +15,28 @@ export async function enrichOne(browser, url) {
       return el ? JSON.parse(el.innerText) : null;
     });
 
+    const pageMedia = await page.evaluate(() => {
+      const ogImage =
+        document.querySelector('meta[property="og:image"]')?.content ||
+        document.querySelector('meta[name="og:image"]')?.content ||
+        null;
+
+      const imageUrls = Array.from(document.images)
+        .map((img) => img.currentSrc || img.src || null)
+        .filter(Boolean)
+        .filter((src) => /^https?:\/\//i.test(src));
+
+      const mainImageUrl =
+        ogImage ||
+        imageUrls.find((src) => /carsandbids/i.test(src)) ||
+        imageUrls[0] ||
+        null;
+
+      const imageCount = new Set(imageUrls).size || null;
+
+      return { mainImageUrl, imageCount };
+    });
+
     const auction =
       nextData?.props?.pageProps?.auction ||
       nextData?.props?.pageProps?.listing ||
@@ -54,6 +76,10 @@ export async function enrichOne(browser, url) {
         seller: {
           type: auction.sellerType || null,
           location: auction.location || null,
+        },
+        media: {
+          mainImageUrl: pageMedia.mainImageUrl,
+          imageCount: pageMedia.imageCount,
         },
         metadata: {
           scrapedAt: new Date().toISOString(),
@@ -120,6 +146,16 @@ export async function enrichOne(browser, url) {
         sellerType: extract("Seller Type"),
         price,
         saleType,
+        mainImageUrl:
+          document.querySelector('meta[property="og:image"]')?.content ||
+          document.querySelector('meta[name="og:image"]')?.content ||
+          null,
+        imageCount: new Set(
+          Array.from(document.images)
+            .map((img) => img.currentSrc || img.src || null)
+            .filter(Boolean)
+            .filter((src) => /^https?:\/\//i.test(src))
+        ).size || null,
       };
     });
 
@@ -157,6 +193,10 @@ export async function enrichOne(browser, url) {
       seller: {
         type: rawData.sellerType?.replace(/\(.*?\)/g, "").trim() || rawData.seller,
         location: rawData.location,
+      },
+      media: {
+        mainImageUrl: rawData.mainImageUrl,
+        imageCount: rawData.imageCount,
       },
       metadata: {
         scrapedAt: new Date().toISOString(),

@@ -2,12 +2,12 @@ import React from "react";
 import { Box, Paper, Typography } from "@mui/material";
 
 function formatCurrency(value) {
-    if (!Number.isFinite(value)) return "—";
+    if (!Number.isFinite(value)) return "-";
     return `$${Math.round(value).toLocaleString()}`;
 }
 
 function formatNumber(value) {
-    if (!Number.isFinite(value)) return "—";
+    if (!Number.isFinite(value)) return "-";
     return Math.round(value).toLocaleString();
 }
 

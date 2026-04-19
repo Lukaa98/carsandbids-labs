@@ -14,7 +14,7 @@ export default function Navbar() {
                         color: "#00B8D9",
                     }}
                 >
-                    Cars & Bids Labs — Dashboard
+                    Cars & Bids Labs - Dashboard
                 </Typography>
             </Toolbar>
         </AppBar>

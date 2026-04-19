@@ -23,7 +23,7 @@ export async function collectListingEntries(page) {
     lastHeight = newHeight;
 
     if (stableCount >= 3) {
-      console.log("✅ Page fully loaded — no new auctions appearing");
+      console.log("✅ Page fully loaded - no new auctions appearing");
       break;
     }
   }

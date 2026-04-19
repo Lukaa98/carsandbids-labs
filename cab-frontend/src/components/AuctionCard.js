@@ -26,7 +26,7 @@ export default function AuctionCard({ auction }) {
     const [loadingChart, setLoadingChart] = useState(false);
 
     // Determine display label and amount
-    let priceLabel = "—";
+    let priceLabel = "-";
     if (auction.finalSalePrice) {
         priceLabel = `Sold for $${auction.finalSalePrice.toLocaleString()}`;
     } else if (auction.finalBidPrice) {
@@ -204,14 +204,14 @@ export default function AuctionCard({ auction }) {
                                     Sale Info
                                 </Typography>
                                 <Typography variant="body2">
-                                    Sale Type: {auction.saleType || "—"}
+                                    Sale Type: {auction.saleType || "-"}
                                     <br />
                                     Final Price:{" "}
                                     {auction.finalSalePrice
                                         ? `$${auction.finalSalePrice.toLocaleString()}`
                                         : auction.finalBidPrice
                                             ? `$${auction.finalBidPrice.toLocaleString()}`
-                                            : "—"}
+                                            : "-"}
                                     <br />
                                     Bids: {auction.numBids || 0} · Comments: {auction.numComments || 0}
                                     <br />
@@ -269,7 +269,7 @@ export default function AuctionCard({ auction }) {
                                 color="text.secondary"
                                 gutterBottom
                             >
-                                {auction.make} {auction.model} — Price vs. Year
+                                {auction.make} {auction.model} - Price vs. Year
                             </Typography>
                             {loadingChart ? (
                                 <CircularProgress color="primary" size={32} />
@@ -291,7 +291,7 @@ export default function AuctionCard({ auction }) {
                                         color="text.secondary"
                                         gutterBottom
                                     >
-                                        {auction.make} {auction.model} — Price vs. Mileage
+                                        {auction.make} {auction.model} - Price vs. Mileage
                                     </Typography>
                                     <PriceMileageChart auctions={relatedAuctions} />
                                 </Box>

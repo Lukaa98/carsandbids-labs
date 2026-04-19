@@ -88,7 +88,7 @@ export async function enrichOne(browser, url) {
       };
     }
 
-    // 🟡 FALLBACK — DOM parsing (robust)
+    // 🟡 FALLBACK - DOM parsing (robust)
     console.log("⚠️ Falling back to DOM parsing");
 
     const rawData = await page.evaluate(() => {

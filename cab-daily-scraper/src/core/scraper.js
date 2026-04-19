@@ -97,7 +97,7 @@ async function exportCsv(jsonArr) {
 async function handleCloudflare(page) {
   const title = await page.title();
   if (title.includes("Just a moment") || title.includes("Verify")) {
-    console.log("⚠️ Cloudflare challenge detected — waiting...");
+    console.log("⚠️ Cloudflare challenge detected - waiting...");
     await sleep(10000);
     const newTitle = await page.title();
     if (newTitle.includes("Verify") || newTitle.includes("moment")) {
@@ -194,7 +194,7 @@ async function main() {
   console.log(`✅ Found ${entries.length} entries (processing up to ${MAX_URLS}).`);
   let toProcess = entries.slice(0, MAX_URLS).map(e => e.url);
 
-  // NEW FIX — reverse processing order so newest gets highest ID
+  // NEW FIX - reverse processing order so newest gets highest ID
   toProcess = toProcess.reverse();
 
   const results = [];

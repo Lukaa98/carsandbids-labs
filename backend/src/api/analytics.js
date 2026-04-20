@@ -48,12 +48,14 @@ function buildInsights(targetAuction, summary) {
   );
 
   const insights = [];
+  const isSold = String(targetAuction.saleType || "").toLowerCase() === "sold";
+  const priceLabel = isSold ? "This sale closed" : "This bid sits";
 
   if (Number.isFinite(priceVsComps)) {
     insights.push(
       priceVsComps >= 0
-        ? `This listing priced ${Math.round(priceVsComps)}% above the average comp.`
-        : `This listing priced ${Math.abs(Math.round(priceVsComps))}% below the average comp.`
+        ? `${priceLabel} ${Math.round(priceVsComps)}% above the average comp.`
+        : `${priceLabel} ${Math.abs(Math.round(priceVsComps))}% below the average comp.`
     );
   }
 
@@ -76,12 +78,10 @@ export async function handleCompAnalytics(env, url) {
   try {
     const make = url.searchParams.get("make") || "";
     const model = url.searchParams.get("model") || "";
-    const auctionId = url.searchParams.get("auctionId") || "";
-    const targetYear = toFiniteNumber(url.searchParams.get("year"));
     const targetMileage = url.searchParams.get("mileage");
     const targetFinalSalePrice = url.searchParams.get("finalSalePrice");
     const targetFinalBidPrice = url.searchParams.get("finalBidPrice");
-    const yearWindow = toFiniteNumber(url.searchParams.get("yearWindow")) ?? 3;
+    const targetSaleType = url.searchParams.get("saleType") || "";
     const limit = toFiniteNumber(url.searchParams.get("limit")) ?? 150;
 
     if (!make || !model) {
@@ -90,16 +90,6 @@ export async function handleCompAnalytics(env, url) {
 
     const where = ["LOWER(make) = ?", "LOWER(model) = ?"];
     const params = [make.toLowerCase(), model.toLowerCase()];
-
-    if (auctionId) {
-      where.push("auctionId != ?");
-      params.push(auctionId);
-    }
-
-    if (targetYear !== null) {
-      where.push("year BETWEEN ? AND ?");
-      params.push(targetYear - yearWindow, targetYear + yearWindow);
-    }
 
     const { results } = await env.DB.prepare(
       `SELECT * FROM auctionResults
@@ -133,6 +123,7 @@ export async function handleCompAnalytics(env, url) {
         mileage: targetMileage,
         finalSalePrice: targetFinalSalePrice,
         finalBidPrice: targetFinalBidPrice,
+        saleType: targetSaleType,
       },
       summary
     );
@@ -145,8 +136,7 @@ export async function handleCompAnalytics(env, url) {
       meta: {
         make,
         model,
-        year: targetYear,
-        yearWindow,
+        scope: "all-years",
       },
     });
   } catch (err) {

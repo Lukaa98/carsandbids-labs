@@ -43,11 +43,10 @@ export default function AuctionCard({ auction }) {
                         auctionId: auction.auctionId,
                         make: auction.make,
                         model: auction.model,
-                        year: auction.year,
                         mileage: auction.mileage,
                         finalSalePrice: auction.finalSalePrice,
                         finalBidPrice: auction.finalBidPrice,
-                        yearWindow: 3,
+                        saleType: auction.saleType,
                         limit: 150,
                     });
                     setRelatedAuctions(data.results || []);
@@ -65,10 +64,10 @@ export default function AuctionCard({ auction }) {
         auction.auctionId,
         auction.make,
         auction.model,
-        auction.year,
         auction.mileage,
         auction.finalSalePrice,
         auction.finalBidPrice,
+        auction.saleType,
     ]);
 
     return (

@@ -1,0 +1,27 @@
+# Workspace-wide local artifacts
+.idea/
+.vscode/
+
+# Dependency and build output
+**/node_modules/
+**/build/
+**/dist/
+
+# Local env and secrets
+**/.env
+**/.env.*
+**/.dev.vars
+**/.dev.vars.*
+
+# Cloudflare / Wrangler local state
+**/.wrangler/
+backend/wrangler.toml
+backend/wrangler.backup.json
+
+# Scraper local runtime data
+cab-daily-scraper/cb-profile/
+cab-daily-scraper/output/
+
+# Misc
+*.log
+keepalive.txt

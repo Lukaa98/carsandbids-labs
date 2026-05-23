@@ -6,7 +6,7 @@ compatibility_date = "2025-09-21"
 enabled = true
 
 [[d1_databases]]
-binding = "DB"  # referenced in code as env.DB
-database_name = "carsandbids"
-database_id = "9f5efa6e-1a6b-4dc1-85d5-40e9739733f4"
+binding = "DB"
+database_name = "replace-with-your-d1-database-name"
+database_id = "replace-with-your-d1-database-id"
 migrations_dir = "migrations"
